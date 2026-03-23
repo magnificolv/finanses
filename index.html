@@ -174,87 +174,34 @@
 
             <!-- SETTINGS TAB -->
             <div v-if="activeTab === 'settings'" class="space-y-6">
-                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
-                    <h3 class="text-lg font-bold mb-4">Gemini AI Iestatījumi</h3>
-                    <p class="text-xs text-neutral-500 mb-4">Ievadi savu API atslēgu, lai izmantotu AI analīzi (tiek glabāta tikai lokāli).</p>
-                    <input type="password" v-model="apiKey" placeholder="Tava API atslēga" 
-                        class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none mb-4">
-                    <button @click="saveApiKey" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm">Saglabāt atslēgu</button>
-                </div>
-
-                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-bold">Kategoriju pārvaldība</h3>
-                        <button @click="showAddCategory = true" class="text-xs bg-blue-600 px-3 py-1 rounded-lg font-bold">+ Jauna</button>
-                    </div>
-
-                    <!-- Add Category Form -->
-                    <div v-if="showAddCategory" class="mb-6 p-4 bg-neutral-800 rounded-2xl border border-neutral-700 animate-in slide-in-from-top-2">
-                        <input type="text" v-model="newCategoryName" placeholder="Kategorijas nosaukums" 
-                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-2 text-sm outline-none mb-3">
-                        <div class="flex gap-2">
-                            <button @click="addCategory" class="flex-1 bg-blue-600 py-2 rounded-xl text-xs font-bold">Pievienot</button>
-                            <button @click="showAddCategory = false; newCategoryName = ''" class="flex-1 bg-neutral-700 py-2 rounded-xl text-xs font-bold">Atcelt</button>
+                <!-- 1. Sistēmas Info & Atjauninājumi -->
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold">Sistēma</h3>
+                        <div class="text-right">
+                            <p class="text-[10px] text-neutral-500">Versija 2.2.0</p>
+                            <p class="text-[10px] text-neutral-600">Firebase Sync</p>
                         </div>
                     </div>
 
-                    <div class="space-y-4">
-                        <div v-for="cat in categories" :key="cat.id" class="space-y-3">
-                            <div class="p-3 bg-neutral-800 rounded-xl flex justify-between items-center group">
-                                <div v-if="editingCategoryId === cat.id" class="flex-1 flex gap-2 mr-2">
-                                    <input type="text" v-model="editingCategoryName" class="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1 text-sm outline-none">
-                                    <button @click="updateCategory(cat.id)" class="text-blue-500 font-bold text-xs">OK</button>
-                                    <button @click="editingCategoryId = null" class="text-neutral-500 font-bold text-xs">X</button>
-                                </div>
-                                <div v-else class="flex-1 flex items-center justify-between">
-                                    <span @click="startEditCategory(cat)" class="text-sm font-medium cursor-pointer hover:text-blue-400">{{ cat.name }}</span>
-                                    <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button @click="startEditCategory(cat)" class="text-neutral-500 hover:text-blue-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        </button>
-                                        <button @click="deleteCategory(cat.id)" class="text-neutral-500 hover:text-red-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Subcategories -->
-                            <div class="pl-6 space-y-2">
-                                <div v-for="sub in cat.subCategories" :key="sub.id" class="flex justify-between items-center group/sub">
-                                    <div v-if="editingSubId === sub.id" class="flex-1 flex gap-2 mr-2">
-                                        <input type="text" v-model="editingSubName" class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-xs outline-none">
-                                        <button @click="updateSubCategory(cat.id, sub.id)" class="text-blue-500 font-bold text-[10px]">OK</button>
-                                        <button @click="editingSubId = null" class="text-neutral-500 font-bold text-[10px]">X</button>
-                                    </div>
-                                    <div v-else class="flex-1 flex items-center justify-between">
-                                        <span @click="startEditSub(sub)" class="text-[11px] text-neutral-400 cursor-pointer hover:text-blue-400">{{ sub.name }}</span>
-                                        <div class="flex gap-2 opacity-0 group-hover/sub:opacity-100 transition-opacity">
-                                            <button @click="startEditSub(sub)" class="text-neutral-600 hover:text-blue-400">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                            </button>
-                                            <button @click="deleteSubCategory(cat.id, sub.id)" class="text-neutral-600 hover:text-red-400">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-if="addingSubToId === cat.id" class="flex gap-2 animate-in slide-in-from-top-1">
-                                    <input type="text" v-model="newSubName" placeholder="Jauna apakškategorija" 
-                                        class="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-1 text-xs outline-none">
-                                    <button @click="addSubCategory(cat.id)" class="text-blue-500 font-bold text-xs">Pievienot</button>
-                                    <button @click="addingSubToId = null" class="text-neutral-500 font-bold text-xs">X</button>
-                                </div>
-                                <button v-else @click="addingSubToId = cat.id" class="text-[10px] text-neutral-600 hover:text-blue-500 font-bold">+ Pievienot apakškategoriju</button>
-                            </div>
-                        </div>
+                    <div v-if="updateAvailable" class="p-4 bg-blue-600/20 border border-blue-500 rounded-2xl animate-pulse">
+                        <p class="text-xs font-bold text-blue-400 mb-2">Pieejams jauns atjauninājums!</p>
+                        <button @click="applyUpdate" class="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold">Atjaunināt tūlīt</button>
                     </div>
+                    
+                    <button v-if="!updateAvailable" @click="checkForUpdates" :disabled="checkingForUpdates" 
+                        class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                        <svg v-if="checkingForUpdates" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {{ checkingForUpdates ? 'Pārbauda...' : 'Pārbaudīt atjauninājumus' }}
+                    </button>
+                    <p v-if="updateStatus" class="text-[10px] text-center text-neutral-500">{{ updateStatus }}</p>
                 </div>
 
+                <!-- 2. Sinhronizācija -->
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl space-y-4">
                     <h3 class="text-lg font-bold mb-2">Sinhronizācija</h3>
                     <div v-if="!user" class="space-y-4">
-                        <p class="text-xs text-neutral-400">Pieslēdzies ar Google, lai tavi dati automātiski sinhronizētos starp ierīcēm.</p>
+                        <p class="text-xs text-neutral-400">Pieslēdzies, lai tavi dati būtu drošībā mākonī.</p>
                         <button @click="login" class="w-full py-3 bg-white text-black rounded-xl text-sm font-bold flex items-center justify-center gap-2">
                             <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                             Pieslēgties ar Google
@@ -276,28 +223,96 @@
                     </div>
                 </div>
 
-                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl space-y-4">
-                    <h3 class="text-lg font-bold mb-2">Dati un Sistēma</h3>
-                    <button @click="exportData" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Eksportēt datus (JSON)</button>
-                    <button @click="$refs.fileInput.click()" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Importēt datus (JSON)</button>
-                    <input type="file" ref="fileInput" @change="importData" class="hidden" accept=".json">
-                    
-                    <div v-if="updateAvailable" class="p-4 bg-blue-600/20 border border-blue-500 rounded-2xl animate-pulse">
-                        <p class="text-xs font-bold text-blue-400 mb-2">Pieejams jauns atjauninājums!</p>
-                        <button @click="applyUpdate" class="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold">Atjaunināt tūlīt</button>
+                <!-- 3. Kategoriju pārvaldība (Accordion) -->
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold">Kategorijas</h3>
+                        <button @click="showAddCategory = true" class="text-xs bg-blue-600 px-3 py-1 rounded-lg font-bold">+ Jauna</button>
                     </div>
-                    <button v-if="!updateAvailable" @click="checkForUpdates" :disabled="checkingForUpdates" 
-                        class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                        <svg v-if="checkingForUpdates" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        {{ checkingForUpdates ? 'Pārbauda...' : 'Pārbaudīt atjauninājumus' }}
-                    </button>
-                    
-                    <p v-if="updateStatus" class="text-[10px] text-center text-neutral-500 animate-in fade-in duration-500">{{ updateStatus }}</p>
 
-                    <div class="text-center">
-                        <p class="text-[10px] text-neutral-500">Versija 2.1.0 (Firebase Sync)</p>
-                        <p class="text-[10px] text-neutral-600 mt-1">Dati tiek sinhronizēti ar mākoņa krātuvi.</p>
+                    <div v-if="showAddCategory" class="mb-6 p-4 bg-neutral-800 rounded-2xl border border-neutral-700 animate-in slide-in-from-top-2">
+                        <input type="text" v-model="newCategoryName" placeholder="Kategorijas nosaukums" 
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-2 text-sm outline-none mb-3">
+                        <div class="flex gap-2">
+                            <button @click="addCategory" class="flex-1 bg-blue-600 py-2 rounded-xl text-xs font-bold">Pievienot</button>
+                            <button @click="showAddCategory = false; newCategoryName = ''" class="flex-1 bg-neutral-700 py-2 rounded-xl text-xs font-bold">Atcelt</button>
+                        </div>
                     </div>
+
+                    <div class="space-y-2">
+                        <div v-for="cat in categories" :key="cat.id" class="border border-neutral-800 rounded-2xl overflow-hidden">
+                            <!-- Category Header -->
+                            <div @click="toggleCategory(cat.id)" 
+                                class="p-4 bg-neutral-800/50 flex justify-between items-center cursor-pointer hover:bg-neutral-800 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm font-bold">{{ cat.name }}</span>
+                                    <span class="text-[10px] text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-full">{{ cat.subCategories.length }}</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button @click.stop="startEditCategory(cat)" class="text-neutral-500 hover:text-blue-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    </button>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500 transition-transform duration-300" 
+                                        :class="expandedCategoryId === cat.id ? 'rotate-180' : ''"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
+
+                            <!-- Subcategories (Collapsible) -->
+                            <div v-if="expandedCategoryId === cat.id" class="p-4 bg-neutral-900/50 space-y-3 animate-in slide-in-from-top-2">
+                                <div v-if="editingCategoryId === cat.id" class="flex gap-2 mb-4">
+                                    <input type="text" v-model="editingCategoryName" class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1 text-sm outline-none">
+                                    <button @click="updateCategory(cat.id)" class="text-blue-500 font-bold text-xs">Saglabāt</button>
+                                </div>
+
+                                <div v-for="sub in cat.subCategories" :key="sub.id" class="flex justify-between items-center pl-2 border-l border-neutral-800">
+                                    <div v-if="editingSubId === sub.id" class="flex-1 flex gap-2 mr-2">
+                                        <input type="text" v-model="editingSubName" class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-xs outline-none">
+                                        <button @click="updateSubCategory(cat.id, sub.id)" class="text-blue-500 font-bold text-[10px]">OK</button>
+                                    </div>
+                                    <div v-else class="flex-1 flex items-center justify-between">
+                                        <span @click="startEditSub(sub)" class="text-xs text-neutral-400">{{ sub.name }}</span>
+                                        <div class="flex gap-2">
+                                            <button @click="startEditSub(sub)" class="text-neutral-600 hover:text-blue-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                            </button>
+                                            <button @click="deleteSubCategory(cat.id, sub.id)" class="text-neutral-600 hover:text-red-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="addingSubToId === cat.id" class="flex gap-2 pt-2">
+                                    <input type="text" v-model="newSubName" placeholder="Jauna apakškategorija" 
+                                        class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1 text-xs outline-none">
+                                    <button @click="addSubCategory(cat.id)" class="text-blue-500 font-bold text-xs">Pievienot</button>
+                                </div>
+                                <button v-else @click="addingSubToId = cat.id" class="text-[10px] text-neutral-600 hover:text-blue-500 font-bold w-full text-left pt-2">+ Pievienot apakškategoriju</button>
+                                
+                                <button @click="deleteCategory(cat.id)" class="w-full mt-4 py-2 border border-red-900/30 text-red-900 text-[10px] font-bold rounded-xl hover:bg-red-900/10 transition-colors">Dzēst kategoriju</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Dati un Sistēma -->
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl space-y-4">
+                    <h3 class="text-lg font-bold mb-2">Dati</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button @click="exportData" class="py-3 bg-neutral-800 rounded-xl text-xs font-medium border border-neutral-700">Eksportēt (JSON)</button>
+                        <button @click="$refs.fileInput.click()" class="py-3 bg-neutral-800 rounded-xl text-xs font-medium border border-neutral-700">Importēt (JSON)</button>
+                    </div>
+                    <input type="file" ref="fileInput" @change="importData" class="hidden" accept=".json">
+                </div>
+
+                <!-- 5. Gemini AI -->
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4">Gemini AI Analīze</h3>
+                    <p class="text-xs text-neutral-500 mb-4">Ievadi API atslēgu, lai AI palīdzētu analizēt tēriņus.</p>
+                    <input type="password" v-model="apiKey" placeholder="Tava API atslēga" 
+                        class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none mb-4">
+                    <button @click="saveApiKey" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm">Saglabāt atslēgu</button>
                 </div>
             </div>
         </main>
@@ -374,7 +389,12 @@
                 const checkingForUpdates = ref(false);
                 const updateStatus = ref('');
                 const statsRange = ref('all');
+                const expandedCategoryId = ref(null);
                 let registration = null;
+
+                const toggleCategory = (id) => {
+                    expandedCategoryId.value = expandedCategoryId.value === id ? null : id;
+                };
 
                 let chart = null;
 
@@ -861,7 +881,8 @@
                     selectCategory, addExpense, deleteExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
-                    checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus
+                    checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus,
+                    expandedCategoryId, toggleCategory
                 };
             }
         }).mount('#app');
