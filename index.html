@@ -122,7 +122,16 @@
             <!-- STATS TAB -->
             <div v-if="activeTab === 'stats'" class="space-y-6">
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
-                    <h3 class="text-lg font-bold mb-6">Mēneša sadalījums</h3>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold">Tēriņu sadalījums</h3>
+                        <select v-model="statsRange" class="bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-[10px] outline-none text-neutral-400">
+                            <option value="all">Viss laiks</option>
+                            <option value="month">Šis mēnesis</option>
+                            <option value="week">Pēdējās 7 dienas</option>
+                            <option value="10days">Pēdējās 10 dienas</option>
+                            <option value="20days">Pēdējās 20 dienas</option>
+                        </select>
+                    </div>
                     <div class="h-64 relative">
                         <canvas id="categoryChart"></canvas>
                     </div>
@@ -311,6 +320,7 @@
                 const editingSubId = ref(null);
                 const editingSubName = ref('');
                 const updateAvailable = ref(false);
+                const statsRange = ref('all');
                 let registration = null;
 
                 let chart = null;
@@ -466,8 +476,27 @@
                     const ctx = document.getElementById('categoryChart');
                     if (!ctx) return;
 
+                    const now = new Date();
+                    let filteredExpenses = expenses.value;
+
+                    if (statsRange.value === 'month') {
+                        filteredExpenses = expenses.value.filter(e => {
+                            const d = new Date(e.date);
+                            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                        });
+                    } else if (statsRange.value === 'week') {
+                        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        filteredExpenses = expenses.value.filter(e => new Date(e.date) >= weekAgo);
+                    } else if (statsRange.value === '10days') {
+                        const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+                        filteredExpenses = expenses.value.filter(e => new Date(e.date) >= tenDaysAgo);
+                    } else if (statsRange.value === '20days') {
+                        const twentyDaysAgo = new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000);
+                        filteredExpenses = expenses.value.filter(e => new Date(e.date) >= twentyDaysAgo);
+                    }
+
                     const dataMap = {};
-                    expenses.value.forEach(e => {
+                    filteredExpenses.forEach(e => {
                         const name = getCategoryName(e.categoryId);
                         dataMap[name] = (dataMap[name] || 0) + e.amount;
                     });
@@ -493,6 +522,10 @@
 
                 watch(activeTab, (newTab) => {
                     if (newTab === 'stats') setTimeout(updateChart, 100);
+                });
+
+                watch(statsRange, () => {
+                    updateChart();
                 });
 
                 const exportData = () => {
@@ -555,7 +588,7 @@
                 return {
                     activeTab, activeTabName, expenses, savings, categories, entry, saving, apiKey,
                     showAddCategory, newCategoryName, editingCategoryId, editingCategoryName,
-                    addingSubToId, newSubName, editingSubId, editingSubName, updateAvailable,
+                    addingSubToId, newSubName, editingSubId, editingSubName, updateAvailable, statsRange,
                     selectedCategorySubs, totalMonthly, totalSavings, recentExpenses,
                     selectCategory, addExpense, deleteExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
