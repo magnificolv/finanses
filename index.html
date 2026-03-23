@@ -83,9 +83,38 @@
                     <div v-for="exp in recentExpenses" :key="exp.id" class="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 flex justify-between items-center">
                         <div>
                             <p class="font-semibold text-sm">{{ getCategoryName(exp.categoryId) }}</p>
-                            <p class="text-[10px] text-neutral-500">{{ getSubCategoryName(exp.categoryId, exp.subCategoryId) }} • {{ formatDate(exp.date) }}</p>
+                            <p v-if="exp.note" class="text-xs text-neutral-300 mt-0.5 italic">"{{ exp.note }}"</p>
+                            <p class="text-[10px] text-neutral-500 mt-1">{{ getSubCategoryName(exp.categoryId, exp.subCategoryId) }} • {{ formatDate(exp.date) }}</p>
                         </div>
                         <span class="font-mono font-bold text-red-400">-€{{ exp.amount.toFixed(2) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HISTORY TAB -->
+            <div v-if="activeTab === 'history'" class="space-y-4">
+                <div class="flex justify-between items-center px-2">
+                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Visi tēriņi</h3>
+                    <span class="text-[10px] text-neutral-600">{{ expenses.length }} ieraksti</span>
+                </div>
+                
+                <div v-if="expenses.length === 0" class="text-center py-12 bg-neutral-900 rounded-3xl border border-neutral-800">
+                    <p class="text-neutral-500 text-sm">Vēl nav neviena tēriņa.</p>
+                </div>
+
+                <div v-for="(exp, index) in [...expenses].reverse()" :key="exp.id" 
+                    class="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 flex justify-between items-center group animate-in fade-in slide-in-from-bottom-2"
+                    :style="{ animationDelay: (index * 50) + 'ms' }">
+                    <div class="flex-1">
+                        <p class="font-semibold text-sm">{{ getCategoryName(exp.categoryId) }}</p>
+                        <p v-if="exp.note" class="text-xs text-neutral-300 mt-0.5 italic">"{{ exp.note }}"</p>
+                        <p class="text-[10px] text-neutral-500 mt-1">{{ getSubCategoryName(exp.categoryId, exp.subCategoryId) }} • {{ formatDate(exp.date) }}</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="font-mono font-bold text-red-400">-€{{ exp.amount.toFixed(2) }}</span>
+                        <button @click="deleteExpense(exp.id)" class="text-neutral-700 hover:text-red-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -237,6 +266,9 @@
             <button @click="activeTab = 'entry'" :class="activeTab === 'entry' ? 'text-blue-500' : 'text-neutral-500'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
             </button>
+            <button @click="activeTab = 'history'" :class="activeTab === 'history' ? 'text-blue-500' : 'text-neutral-500'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </button>
             <button @click="activeTab = 'stats'" :class="activeTab === 'stats' ? 'text-blue-500' : 'text-neutral-500'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
             </button>
@@ -284,7 +316,7 @@
                 let chart = null;
 
                 const activeTabName = computed(() => {
-                    const names = { entry: 'Jauns ieraksts', stats: 'Statistika', savings: 'Ietaupījumi', settings: 'Iestatījumi' };
+                    const names = { entry: 'Jauns ieraksts', history: 'Vēsture', stats: 'Statistika', savings: 'Ietaupījumi', settings: 'Iestatījumi' };
                     return names[activeTab.value];
                 });
 
@@ -310,7 +342,7 @@
 
                 const addExpense = () => {
                     expenses.value.push({
-                        id: Date.now(),
+                        id: Date.now().toString(),
                         amount: parseFloat(entry.value.amount),
                         categoryId: entry.value.categoryId,
                         subCategoryId: entry.value.subCategoryId,
@@ -319,6 +351,13 @@
                     });
                     entry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' };
                     save();
+                };
+
+                const deleteExpense = (id) => {
+                    if (confirm('Vai tiešām vēlaties dzēst šo ierakstu?')) {
+                        expenses.value = expenses.value.filter(e => e.id !== id);
+                        save();
+                    }
                 };
 
                 const addSaving = () => {
@@ -518,7 +557,7 @@
                     showAddCategory, newCategoryName, editingCategoryId, editingCategoryName,
                     addingSubToId, newSubName, editingSubId, editingSubName, updateAvailable,
                     selectedCategorySubs, totalMonthly, totalSavings, recentExpenses,
-                    selectCategory, addExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
+                    selectCategory, addExpense, deleteExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
                     checkForUpdates, applyUpdate
