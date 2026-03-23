@@ -215,9 +215,17 @@
                 </div>
 
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl space-y-4">
+                    <h3 class="text-lg font-bold mb-2">Dati un Sistēma</h3>
                     <button @click="exportData" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Eksportēt datus (JSON)</button>
+                    
+                    <div v-if="updateAvailable" class="p-4 bg-blue-600/20 border border-blue-500 rounded-2xl animate-pulse">
+                        <p class="text-xs font-bold text-blue-400 mb-2">Pieejams jauns atjauninājums!</p>
+                        <button @click="applyUpdate" class="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold">Atjaunināt tūlīt</button>
+                    </div>
+                    <button v-else @click="checkForUpdates" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Pārbaudīt atjauninājumus</button>
+
                     <div class="text-center">
-                        <p class="text-[10px] text-neutral-500">Versija 1.1.0 (Single-File PWA)</p>
+                        <p class="text-[10px] text-neutral-500">Versija 1.2.0 (Single-File PWA)</p>
                         <p class="text-[10px] text-neutral-600 mt-1">Dati tiek glabāti lokāli pārlūkā.</p>
                     </div>
                 </div>
@@ -270,6 +278,8 @@
                 const newSubName = ref('');
                 const editingSubId = ref(null);
                 const editingSubName = ref('');
+                const updateAvailable = ref(false);
+                let registration = null;
 
                 let chart = null;
 
@@ -456,20 +466,62 @@
                     a.click();
                 };
 
+                const checkForUpdates = () => {
+                    if (registration) {
+                        registration.update().then(() => {
+                            alert('Pārbaude pabeigta. Ja būs jauna versija, tā parādīsies šeit.');
+                        });
+                    }
+                };
+
+                const applyUpdate = () => {
+                    if (registration && registration.waiting) {
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    } else {
+                        window.location.reload();
+                    }
+                };
+
                 onMounted(() => {
                     if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.register('sw.js');
+                        navigator.serviceWorker.register('sw.js').then(reg => {
+                            registration = reg;
+                            
+                            // Check if there is already a waiting service worker
+                            if (reg.waiting) {
+                                updateAvailable.value = true;
+                            }
+
+                            // Listen for new service worker being installed
+                            reg.addEventListener('updatefound', () => {
+                                const newWorker = reg.installing;
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        updateAvailable.value = true;
+                                    }
+                                });
+                            });
+                        });
+
+                        let refreshing = false;
+                        navigator.serviceWorker.addEventListener('controllerchange', () => {
+                            if (!refreshing) {
+                                window.location.reload();
+                                refreshing = true;
+                            }
+                        });
                     }
                 });
 
                 return {
                     activeTab, activeTabName, expenses, savings, categories, entry, saving, apiKey,
                     showAddCategory, newCategoryName, editingCategoryId, editingCategoryName,
-                    addingSubToId, newSubName, editingSubId, editingSubName,
+                    addingSubToId, newSubName, editingSubId, editingSubName, updateAvailable,
                     selectedCategorySubs, totalMonthly, totalSavings, recentExpenses,
                     selectCategory, addExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
-                    addSubCategory, startEditSub, updateSubCategory, deleteSubCategory
+                    addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
+                    checkForUpdates, applyUpdate
                 };
             }
         }).mount('#app');
