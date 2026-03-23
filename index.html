@@ -255,6 +255,8 @@
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl space-y-4">
                     <h3 class="text-lg font-bold mb-2">Dati un Sistēma</h3>
                     <button @click="exportData" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Eksportēt datus (JSON)</button>
+                    <button @click="$refs.fileInput.click()" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Importēt datus (JSON)</button>
+                    <input type="file" ref="fileInput" @change="importData" class="hidden" accept=".json">
                     
                     <div v-if="updateAvailable" class="p-4 bg-blue-600/20 border border-blue-500 rounded-2xl animate-pulse">
                         <p class="text-xs font-bold text-blue-400 mb-2">Pieejams jauns atjauninājums!</p>
@@ -269,7 +271,7 @@
                     <p v-if="updateStatus" class="text-[10px] text-center text-neutral-500 animate-in fade-in duration-500">{{ updateStatus }}</p>
 
                     <div class="text-center">
-                        <p class="text-[10px] text-neutral-500">Versija 1.5.0 (Single-File PWA)</p>
+                        <p class="text-[10px] text-neutral-500">Versija 1.6.0 (Single-File PWA)</p>
                         <p class="text-[10px] text-neutral-600 mt-1">Dati tiek glabāti lokāli pārlūkā.</p>
                     </div>
                 </div>
@@ -544,6 +546,32 @@
                     a.href = url;
                     a.download = `budzets_${new Date().toISOString().split('T')[0]}.json`;
                     a.click();
+                };
+
+                const importData = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data.expenses && data.categories) {
+                                if (confirm('Importējot datus, visi pašreizējie dati šajā ierīcē tiks aizstāti. Turpināt?')) {
+                                    expenses.value = data.expenses;
+                                    savings.value = data.savings || [];
+                                    categories.value = data.categories;
+                                    save();
+                                    alert('Dati veiksmīgi importēti!');
+                                    window.location.reload();
+                                }
+                            } else {
+                                alert('Nederīgs JSON fails.');
+                            }
+                        } catch (err) {
+                            alert('Kļūda nolasot failu.');
+                        }
+                    };
+                    reader.readAsText(file);
                 };
 
                 const checkForUpdates = () => {
