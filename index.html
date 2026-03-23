@@ -146,11 +146,70 @@
                 </div>
 
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
-                    <h3 class="text-lg font-bold mb-4">Kategoriju pārvaldība</h3>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold">Kategoriju pārvaldība</h3>
+                        <button @click="showAddCategory = true" class="text-xs bg-blue-600 px-3 py-1 rounded-lg font-bold">+ Jauna</button>
+                    </div>
+
+                    <!-- Add Category Form -->
+                    <div v-if="showAddCategory" class="mb-6 p-4 bg-neutral-800 rounded-2xl border border-neutral-700 animate-in slide-in-from-top-2">
+                        <input type="text" v-model="newCategoryName" placeholder="Kategorijas nosaukums" 
+                            class="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-2 text-sm outline-none mb-3">
+                        <div class="flex gap-2">
+                            <button @click="addCategory" class="flex-1 bg-blue-600 py-2 rounded-xl text-xs font-bold">Pievienot</button>
+                            <button @click="showAddCategory = false; newCategoryName = ''" class="flex-1 bg-neutral-700 py-2 rounded-xl text-xs font-bold">Atcelt</button>
+                        </div>
+                    </div>
+
                     <div class="space-y-4">
-                        <div v-for="cat in categories" :key="cat.id" class="p-3 bg-neutral-800 rounded-xl flex justify-between items-center">
-                            <span class="text-sm">{{ cat.name }}</span>
-                            <span class="text-[10px] text-neutral-500">{{ cat.subCategories.length }} apakškategorijas</span>
+                        <div v-for="cat in categories" :key="cat.id" class="space-y-3">
+                            <div class="p-3 bg-neutral-800 rounded-xl flex justify-between items-center group">
+                                <div v-if="editingCategoryId === cat.id" class="flex-1 flex gap-2 mr-2">
+                                    <input type="text" v-model="editingCategoryName" class="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1 text-sm outline-none">
+                                    <button @click="updateCategory(cat.id)" class="text-blue-500 font-bold text-xs">OK</button>
+                                    <button @click="editingCategoryId = null" class="text-neutral-500 font-bold text-xs">X</button>
+                                </div>
+                                <div v-else class="flex-1 flex items-center justify-between">
+                                    <span @click="startEditCategory(cat)" class="text-sm font-medium cursor-pointer hover:text-blue-400">{{ cat.name }}</span>
+                                    <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button @click="startEditCategory(cat)" class="text-neutral-500 hover:text-blue-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        </button>
+                                        <button @click="deleteCategory(cat.id)" class="text-neutral-500 hover:text-red-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Subcategories -->
+                            <div class="pl-6 space-y-2">
+                                <div v-for="sub in cat.subCategories" :key="sub.id" class="flex justify-between items-center group/sub">
+                                    <div v-if="editingSubId === sub.id" class="flex-1 flex gap-2 mr-2">
+                                        <input type="text" v-model="editingSubName" class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-xs outline-none">
+                                        <button @click="updateSubCategory(cat.id, sub.id)" class="text-blue-500 font-bold text-[10px]">OK</button>
+                                        <button @click="editingSubId = null" class="text-neutral-500 font-bold text-[10px]">X</button>
+                                    </div>
+                                    <div v-else class="flex-1 flex items-center justify-between">
+                                        <span @click="startEditSub(sub)" class="text-[11px] text-neutral-400 cursor-pointer hover:text-blue-400">{{ sub.name }}</span>
+                                        <div class="flex gap-2 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                            <button @click="startEditSub(sub)" class="text-neutral-600 hover:text-blue-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                            </button>
+                                            <button @click="deleteSubCategory(cat.id, sub.id)" class="text-neutral-600 hover:text-red-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="addingSubToId === cat.id" class="flex gap-2 animate-in slide-in-from-top-1">
+                                    <input type="text" v-model="newSubName" placeholder="Jauna apakškategorija" 
+                                        class="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-1 text-xs outline-none">
+                                    <button @click="addSubCategory(cat.id)" class="text-blue-500 font-bold text-xs">Pievienot</button>
+                                    <button @click="addingSubToId = null" class="text-neutral-500 font-bold text-xs">X</button>
+                                </div>
+                                <button v-else @click="addingSubToId = cat.id" class="text-[10px] text-neutral-600 hover:text-blue-500 font-bold">+ Pievienot apakškategoriju</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -201,6 +260,17 @@
 
                 const entry = ref({ amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' });
                 const saving = ref({ amount: '', desc: '' });
+                
+                // Category Management State
+                const showAddCategory = ref(false);
+                const newCategoryName = ref('');
+                const editingCategoryId = ref(null);
+                const editingCategoryName = ref('');
+                const addingSubToId = ref(null);
+                const newSubName = ref('');
+                const editingSubId = ref(null);
+                const editingSubName = ref('');
+
                 let chart = null;
 
                 const activeTabName = computed(() => {
@@ -243,13 +313,86 @@
 
                 const addSaving = () => {
                     savings.value.push({
-                        id: Date.now(),
+                        id: Date.now().toString(),
                         amount: parseFloat(saving.value.amount),
                         desc: saving.value.desc,
                         date: new Date().toISOString()
                     });
                     saving.value = { amount: '', desc: '' };
                     save();
+                };
+
+                // Category Management Methods
+                const addCategory = () => {
+                    if (!newCategoryName.value) return;
+                    categories.value.push({
+                        id: Date.now().toString(),
+                        name: newCategoryName.value,
+                        subCategories: []
+                    });
+                    newCategoryName.value = '';
+                    showAddCategory.value = false;
+                    save();
+                };
+
+                const startEditCategory = (cat) => {
+                    editingCategoryId.value = cat.id;
+                    editingCategoryName.value = cat.name;
+                };
+
+                const updateCategory = (id) => {
+                    const cat = categories.value.find(c => c.id === id);
+                    if (cat && editingCategoryName.value) {
+                        cat.name = editingCategoryName.value;
+                        editingCategoryId.value = null;
+                        save();
+                    }
+                };
+
+                const deleteCategory = (id) => {
+                    if (confirm('Vai tiešām vēlaties dzēst šo kategoriju un visas tās apakškategorijas?')) {
+                        categories.value = categories.value.filter(c => c.id !== id);
+                        save();
+                    }
+                };
+
+                const addSubCategory = (catId) => {
+                    if (!newSubName.value) return;
+                    const cat = categories.value.find(c => c.id === catId);
+                    if (cat) {
+                        cat.subCategories.push({
+                            id: Date.now().toString(),
+                            name: newSubName.value
+                        });
+                        newSubName.value = '';
+                        addingSubToId.value = null;
+                        save();
+                    }
+                };
+
+                const startEditSub = (sub) => {
+                    editingSubId.value = sub.id;
+                    editingSubName.value = sub.name;
+                };
+
+                const updateSubCategory = (catId, subId) => {
+                    const cat = categories.value.find(c => c.id === catId);
+                    if (cat) {
+                        const sub = cat.subCategories.find(s => s.id === subId);
+                        if (sub && editingSubName.value) {
+                            sub.name = editingSubName.value;
+                            editingSubId.value = null;
+                            save();
+                        }
+                    }
+                };
+
+                const deleteSubCategory = (catId, subId) => {
+                    const cat = categories.value.find(c => c.id === catId);
+                    if (cat) {
+                        cat.subCategories = cat.subCategories.filter(s => s.id !== subId);
+                        save();
+                    }
                 };
 
                 const save = () => {
@@ -321,8 +464,12 @@
 
                 return {
                     activeTab, activeTabName, expenses, savings, categories, entry, saving, apiKey,
+                    showAddCategory, newCategoryName, editingCategoryId, editingCategoryName,
+                    addingSubToId, newSubName, editingSubId, editingSubName,
                     selectedCategorySubs, totalMonthly, totalSavings, recentExpenses,
-                    selectCategory, addExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData
+                    selectCategory, addExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
+                    addCategory, startEditCategory, updateCategory, deleteCategory,
+                    addSubCategory, startEditSub, updateSubCategory, deleteSubCategory
                 };
             }
         }).mount('#app');
