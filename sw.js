@@ -1,4 +1,5 @@
-const CACHE_NAME = 'budget-v2';
+const CACHE_NAME = 'budget-v3';
+const VERSION = '1.3.0';
 const ASSETS = [
   'index.html',
   'manifest.json'
@@ -10,7 +11,24 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  // Clean up old caches
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => clients.claim())
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (e) => {
