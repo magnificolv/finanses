@@ -260,10 +260,16 @@
                         <p class="text-xs font-bold text-blue-400 mb-2">Pieejams jauns atjauninājums!</p>
                         <button @click="applyUpdate" class="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold">Atjaunināt tūlīt</button>
                     </div>
-                    <button v-else @click="checkForUpdates" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Pārbaudīt atjauninājumus</button>
+                    <button v-if="!updateAvailable" @click="checkForUpdates" :disabled="checkingForUpdates" 
+                        class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                        <svg v-if="checkingForUpdates" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {{ checkingForUpdates ? 'Pārbauda...' : 'Pārbaudīt atjauninājumus' }}
+                    </button>
+                    
+                    <p v-if="updateStatus" class="text-[10px] text-center text-neutral-500 animate-in fade-in duration-500">{{ updateStatus }}</p>
 
                     <div class="text-center">
-                        <p class="text-[10px] text-neutral-500">Versija 1.3.0 (Single-File PWA)</p>
+                        <p class="text-[10px] text-neutral-500">Versija 1.5.0 (Single-File PWA)</p>
                         <p class="text-[10px] text-neutral-600 mt-1">Dati tiek glabāti lokāli pārlūkā.</p>
                     </div>
                 </div>
@@ -320,6 +326,8 @@
                 const editingSubId = ref(null);
                 const editingSubName = ref('');
                 const updateAvailable = ref(false);
+                const checkingForUpdates = ref(false);
+                const updateStatus = ref('');
                 const statsRange = ref('all');
                 let registration = null;
 
@@ -540,8 +548,20 @@
 
                 const checkForUpdates = () => {
                     if (registration) {
+                        checkingForUpdates.value = true;
+                        updateStatus.value = '';
+                        
                         registration.update().then(() => {
-                            alert('Pārbaude pabeigta. Ja būs jauna versija, tā parādīsies šeit.');
+                            setTimeout(() => {
+                                checkingForUpdates.value = false;
+                                if (!updateAvailable.value) {
+                                    updateStatus.value = 'Tev jau ir jaunākā versija.';
+                                    setTimeout(() => updateStatus.value = '', 3000);
+                                }
+                            }, 1000);
+                        }).catch(() => {
+                            checkingForUpdates.value = false;
+                            updateStatus.value = 'Kļūda pārbaudot atjauninājumus.';
                         });
                     }
                 };
