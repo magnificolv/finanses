@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}/expenses/{expenseId}
+    // Fields:
+    //   - id: string
+    //   - amount: number
+    //   - categoryId: string
+    //   - subCategoryId: string
+    //   - date: timestamp
+    //   - note: string
+    //   - uid: string (matches userId)
+    //
+    // Collection: /users/{userId}/savings/{savingId}
+    // Fields:
+    //   - id: string
+    //   - amount: number
+    //   - date: timestamp
+    //   - note: string
+    //   - uid: string (matches userId)
+    //
+    // Collection: /users/{userId}/categories/{categoryId}
+    // Fields:
+    //   - id: string
+    //   - name: string
+    //   - icon: string
+    //   - subCategories: list (of objects with id, name)
+    //   - uid: string (matches userId)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "Magnificox@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidExpense(data) {
+      return data.amount is number && data.amount >= 0 &&
+             data.categoryId is string &&
+             data.date is timestamp &&
+             data.uid == request.auth.uid;
+    }
+
+    function isValidSaving(data) {
+      return data.amount is number && data.amount >= 0 &&
+             data.date is timestamp &&
+             data.uid == request.auth.uid;
+    }
+
+    function isValidCategory(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.uid == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+
+      match /expenses/{expenseId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidExpense(request.resource.data);
+        allow update: if isOwner(userId) && isValidExpense(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /savings/{savingId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidSaving(request.resource.data);
+        allow update: if isOwner(userId) && isValidSaving(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidCategory(request.resource.data);
+        allow update: if isOwner(userId) && isValidCategory(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

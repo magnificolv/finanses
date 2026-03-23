@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "Expense": {
+      "title": "Expense",
+      "description": "A financial expense record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "categoryId": { "type": "string" },
+        "subCategoryId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "note": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["amount", "categoryId", "date", "uid"]
+    },
+    "Saving": {
+      "title": "Saving",
+      "description": "A financial saving record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "note": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["amount", "date", "uid"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A user-defined expense category.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "subCategories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          }
+        },
+        "uid": { "type": "string" }
+      },
+      "required": ["name", "uid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "User's expenses."
+    },
+    "/users/{userId}/savings/{savingId}": {
+      "schema": "Saving",
+      "description": "User's savings."
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "User's custom categories."
+    }
+  }
+}
