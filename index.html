@@ -1,14 +1,331 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="/manifest.json" />
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budžeta Trackers</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .glass { background: rgba(23, 23, 23, 0.8); backdrop-filter: blur(12px); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="bg-neutral-950 text-neutral-100 min-h-screen">
+    <div id="app" v-cloak>
+        <!-- Header -->
+        <header class="p-6 border-b border-neutral-900 flex justify-between items-center sticky top-0 bg-neutral-950/80 backdrop-blur-md z-40">
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Budžeta Trackers</h1>
+                <p class="text-neutral-500 text-xs">{{ activeTabName }}</p>
+            </div>
+            <div class="bg-neutral-900 px-3 py-1 rounded-full border border-neutral-800 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-sm font-mono font-bold">€ {{ totalMonthly.toFixed(2) }}</span>
+            </div>
+        </header>
 
+        <main class="p-4 max-w-md mx-auto pb-24">
+            <!-- ENTRY TAB -->
+            <div v-if="activeTab === 'entry'" class="space-y-6">
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-2xl">
+                    <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Summa (€)</label>
+                    <input type="number" v-model="entry.amount" placeholder="0.00" 
+                        class="w-full bg-transparent text-5xl font-bold outline-none border-b border-neutral-800 pb-4 mb-6 focus:border-blue-500 transition-colors">
+
+                    <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-4">Kategorija</label>
+                    <div class="grid grid-cols-3 gap-2 mb-6">
+                        <button v-for="cat in categories" :key="cat.id" 
+                            @click="selectCategory(cat)"
+                            :class="['p-3 rounded-2xl border text-xs font-medium transition-all flex flex-col items-center gap-1', 
+                                     entry.categoryId === cat.id ? 'bg-blue-600 border-blue-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-400']">
+                            <span>{{ cat.name }}</span>
+                        </button>
+                    </div>
+
+                    <div v-if="entry.categoryId" class="space-y-4 animate-in fade-in duration-300">
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500">Apakškategorija</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button @click="entry.subCategoryId = 'uncategorized'"
+                                :class="['px-3 py-1.5 rounded-full text-xs border transition-all', 
+                                         entry.subCategoryId === 'uncategorized' ? 'bg-neutral-100 text-neutral-900' : 'bg-neutral-800 text-neutral-400 border-neutral-700']">
+                                Nav norādīts
+                            </button>
+                            <button v-for="sub in selectedCategorySubs" :key="sub.id"
+                                @click="entry.subCategoryId = sub.id"
+                                :class="['px-3 py-1.5 rounded-full text-xs border transition-all', 
+                                         entry.subCategoryId === sub.id ? 'bg-neutral-100 text-neutral-900' : 'bg-neutral-800 text-neutral-400 border-neutral-700']">
+                                {{ sub.name }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Piezīme</label>
+                        <input type="text" v-model="entry.note" placeholder="Kas tika nopirkts?" 
+                            class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-neutral-500">
+                    </div>
+
+                    <button @click="addExpense" :disabled="!entry.amount || !entry.categoryId"
+                        class="w-full mt-8 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-4 rounded-2xl shadow-lg transition-all">
+                        Pievienot tēriņu
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-2">Pēdējie tēriņi</h3>
+                    <div v-for="exp in recentExpenses" :key="exp.id" class="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold text-sm">{{ getCategoryName(exp.categoryId) }}</p>
+                            <p class="text-[10px] text-neutral-500">{{ getSubCategoryName(exp.categoryId, exp.subCategoryId) }} • {{ formatDate(exp.date) }}</p>
+                        </div>
+                        <span class="font-mono font-bold text-red-400">-€{{ exp.amount.toFixed(2) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STATS TAB -->
+            <div v-if="activeTab === 'stats'" class="space-y-6">
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-6">Mēneša sadalījums</h3>
+                    <div class="h-64 relative">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4">Ietaupījumu progress</h3>
+                    <div class="flex items-center gap-4">
+                        <div class="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 text-2xl font-bold">€</div>
+                        <div>
+                            <p class="text-3xl font-bold text-emerald-500">€{{ totalSavings.toFixed(2) }}</p>
+                            <p class="text-xs text-neutral-500">Kopējais ietaupījums</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SAVINGS TAB -->
+            <div v-if="activeTab === 'savings'" class="space-y-6">
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-2">Pievienot ietaupījumu</h3>
+                    <p class="text-xs text-neutral-500 mb-6">Piemēram: "Kafija termosā lidzi (-3€)"</p>
+                    <div class="space-y-4">
+                        <input type="number" v-model="saving.amount" placeholder="Summa (€)" 
+                            class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none">
+                        <input type="text" v-model="saving.desc" placeholder="Kā tu ietaupīji?" 
+                            class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none">
+                        <button @click="addSaving" :disabled="!saving.amount || !saving.desc"
+                            class="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl transition-all">
+                            Saglabāt
+                        </button>
+                    </div>
+                </div>
+                <div v-for="s in savings" :key="s.id" class="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 flex justify-between items-center">
+                    <div>
+                        <p class="font-semibold text-sm">{{ s.desc }}</p>
+                        <p class="text-[10px] text-neutral-500">{{ formatDate(s.date) }}</p>
+                    </div>
+                    <span class="font-mono font-bold text-emerald-400">+€{{ s.amount.toFixed(2) }}</span>
+                </div>
+            </div>
+
+            <!-- SETTINGS TAB -->
+            <div v-if="activeTab === 'settings'" class="space-y-6">
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4">Gemini AI Iestatījumi</h3>
+                    <p class="text-xs text-neutral-500 mb-4">Ievadi savu API atslēgu, lai izmantotu AI analīzi (tiek glabāta tikai lokāli).</p>
+                    <input type="password" v-model="apiKey" placeholder="Tava API atslēga" 
+                        class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none mb-4">
+                    <button @click="saveApiKey" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm">Saglabāt atslēgu</button>
+                </div>
+
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4">Kategoriju pārvaldība</h3>
+                    <div class="space-y-4">
+                        <div v-for="cat in categories" :key="cat.id" class="p-3 bg-neutral-800 rounded-xl flex justify-between items-center">
+                            <span class="text-sm">{{ cat.name }}</span>
+                            <span class="text-[10px] text-neutral-500">{{ cat.subCategories.length }} apakškategorijas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl space-y-4">
+                    <button @click="exportData" class="w-full py-3 bg-neutral-800 rounded-xl text-sm font-medium border border-neutral-700">Eksportēt datus (JSON)</button>
+                    <div class="text-center">
+                        <p class="text-[10px] text-neutral-500">Versija 1.1.0 (Single-File PWA)</p>
+                        <p class="text-[10px] text-neutral-600 mt-1">Dati tiek glabāti lokāli pārlūkā.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Navigation -->
+        <nav class="fixed bottom-0 left-0 right-0 glass border-t border-neutral-800 p-4 flex justify-around items-center z-50 safe-bottom">
+            <button @click="activeTab = 'entry'" :class="activeTab === 'entry' ? 'text-blue-500' : 'text-neutral-500'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+            </button>
+            <button @click="activeTab = 'stats'" :class="activeTab === 'stats' ? 'text-blue-500' : 'text-neutral-500'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+            </button>
+            <button @click="activeTab = 'savings'" :class="activeTab === 'savings' ? 'text-emerald-500' : 'text-neutral-500'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            </button>
+            <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'text-blue-500' : 'text-neutral-500'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                const activeTab = ref('entry');
+                const expenses = ref(JSON.parse(localStorage.getItem('expenses') || '[]'));
+                const savings = ref(JSON.parse(localStorage.getItem('savings') || '[]'));
+                const apiKey = ref(localStorage.getItem('gemini_api_key') || '');
+                const categories = ref(JSON.parse(localStorage.getItem('categories') || JSON.stringify([
+                    { id: 'food', name: 'Ēdiens', subCategories: [{id: '1', name: 'Pārtika'}, {id: '2', name: 'Restorāni'}] },
+                    { id: 'transport', name: 'Transports', subCategories: [{id: '3', name: 'Degviela'}] },
+                    { id: 'housing', name: 'Mājoklis', subCategories: [] },
+                    { id: 'health', name: 'Veselība', subCategories: [] },
+                    { id: 'other', name: 'Citi', subCategories: [] }
+                ])));
+
+                const entry = ref({ amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' });
+                const saving = ref({ amount: '', desc: '' });
+                let chart = null;
+
+                const activeTabName = computed(() => {
+                    const names = { entry: 'Jauns ieraksts', stats: 'Statistika', savings: 'Ietaupījumi', settings: 'Iestatījumi' };
+                    return names[activeTab.value];
+                });
+
+                const selectedCategorySubs = computed(() => {
+                    const cat = categories.value.find(c => c.id === entry.value.categoryId);
+                    return cat ? cat.subCategories : [];
+                });
+
+                const totalMonthly = computed(() => {
+                    const now = new Date();
+                    return expenses.value
+                        .filter(e => new Date(e.date).getMonth() === now.getMonth())
+                        .reduce((sum, e) => sum + e.amount, 0);
+                });
+
+                const totalSavings = computed(() => savings.value.reduce((sum, s) => sum + s.amount, 0));
+                const recentExpenses = computed(() => expenses.value.slice(-5).reverse());
+
+                const selectCategory = (cat) => {
+                    entry.value.categoryId = cat.id;
+                    entry.value.subCategoryId = 'uncategorized';
+                };
+
+                const addExpense = () => {
+                    expenses.value.push({
+                        id: Date.now(),
+                        amount: parseFloat(entry.value.amount),
+                        categoryId: entry.value.categoryId,
+                        subCategoryId: entry.value.subCategoryId,
+                        note: entry.value.note,
+                        date: new Date().toISOString()
+                    });
+                    entry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' };
+                    save();
+                };
+
+                const addSaving = () => {
+                    savings.value.push({
+                        id: Date.now(),
+                        amount: parseFloat(saving.value.amount),
+                        desc: saving.value.desc,
+                        date: new Date().toISOString()
+                    });
+                    saving.value = { amount: '', desc: '' };
+                    save();
+                };
+
+                const save = () => {
+                    localStorage.setItem('expenses', JSON.stringify(expenses.value));
+                    localStorage.setItem('savings', JSON.stringify(savings.value));
+                    localStorage.setItem('categories', JSON.stringify(categories.value));
+                };
+
+                const saveApiKey = () => localStorage.setItem('gemini_api_key', apiKey.value);
+
+                const getCategoryName = (id) => categories.value.find(c => c.id === id)?.name || 'Nezināms';
+                const getSubCategoryName = (catId, subId) => {
+                    if (subId === 'uncategorized') return 'Nav norādīts';
+                    const cat = categories.value.find(c => c.id === catId);
+                    return cat?.subCategories.find(s => s.id === subId)?.name || 'Nav norādīts';
+                };
+
+                const formatDate = (iso) => new Date(iso).toLocaleDateString('lv-LV');
+
+                const updateChart = () => {
+                    if (activeTab.value !== 'stats') return;
+                    const ctx = document.getElementById('categoryChart');
+                    if (!ctx) return;
+
+                    const dataMap = {};
+                    expenses.value.forEach(e => {
+                        const name = getCategoryName(e.categoryId);
+                        dataMap[name] = (dataMap[name] || 0) + e.amount;
+                    });
+
+                    if (chart) chart.destroy();
+                    chart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(dataMap),
+                            datasets: [{
+                                data: Object.values(dataMap),
+                                backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { color: '#a3a3a3', font: { size: 10 } } } }
+                        }
+                    });
+                };
+
+                watch(activeTab, (newTab) => {
+                    if (newTab === 'stats') setTimeout(updateChart, 100);
+                });
+
+                const exportData = () => {
+                    const data = { expenses: expenses.value, savings: savings.value, categories: categories.value };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `budzets_${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                };
+
+                onMounted(() => {
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('sw.js');
+                    }
+                });
+
+                return {
+                    activeTab, activeTabName, expenses, savings, categories, entry, saving, apiKey,
+                    selectedCategorySubs, totalMonthly, totalSavings, recentExpenses,
+                    selectCategory, addExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
