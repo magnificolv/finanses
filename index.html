@@ -485,7 +485,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js'
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js'
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, getDocFromServer, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, getDocFromServer, serverTimestamp, writeBatch, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'
         import { GoogleGenAI } from "https://esm.run/@google/genai"
         
         const firebaseConfig = {
@@ -647,7 +647,7 @@
                     syncStatus.value = 'syncing';
                     const uid = user.value.uid;
                     try {
-                        const { writeBatch, doc, collection, getDocs } = FirebaseFirestore;
+                        
                         
                         const syncCollection = async (colName, data) => {
                             const colRef = collection(db, `users/${uid}/${colName}`);
@@ -689,7 +689,7 @@
                     syncStatus.value = 'syncing';
                     const uid = user.value.uid;
                     try {
-                        const { collection, getDocs, query, orderBy } = FirebaseFirestore;
+                        
                         
                         const fetchCol = async (colName, orderField) => {
                             let q = collection(db, `users/${uid}/${colName}`);
