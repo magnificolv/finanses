@@ -444,8 +444,10 @@
                         console.error('Login error:', error);
                         if (error.code === 'auth/popup-blocked') {
                             loginError.value = 'Pārlūks bloķēja uznirstošo logu. Lūdzu, atļauj "pop-ups" vai atver lietotni jaunā cilnē.';
+                        } else if (error.code === 'auth/unauthorized-domain') {
+                            loginError.value = `Šis domēns (${window.location.hostname}) nav autorizēts Firebase konsolē. Lūdzu, pievieno to pie "Authorized domains".`;
                         } else if (error.code === 'auth/cancelled-popup-request') {
-                            // Ignorējam, ja lietotājs pats aizvēra
+                            // Ignorējam
                         } else {
                             loginError.value = 'Kļūda pieslēdzoties: ' + error.message;
                         }
