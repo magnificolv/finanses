@@ -521,8 +521,8 @@
                 const user = ref(null);
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
                 const lastSynced = ref(null);
-                const appVersion = ref(typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '3.1.0');
-                const buildId = ref(typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'unknown');
+                const appVersion = ref('%APP_VERSION%');
+                const buildId = ref('%BUILD_ID%');
                 const loginError = ref('');
                 const isAiCategorizing = ref(false);
                 const aiError = ref('');
