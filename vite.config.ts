@@ -9,11 +9,20 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     base: './',
-    plugins: [tailwindcss()],
+    plugins: [
+      tailwindcss(),
+      {
+        name: 'html-transform',
+        transformIndexHtml(html) {
+          return html.replace(
+            '</head>',
+            `<script>window.__APP_VERSION__ = ${JSON.stringify(version)}; window.__BUILD_ID__ = ${JSON.stringify(buildId)};</script></head>`
+          );
+        },
+      },
+    ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      '__APP_VERSION__': JSON.stringify(version),
-      '__BUILD_ID__': JSON.stringify(buildId),
     },
     resolve: {
       alias: {
