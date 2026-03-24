@@ -412,8 +412,8 @@
                 const user = ref(null);
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
                 const lastSynced = ref(null);
-                const appVersion = ref('2.4.0');
-                const buildId = ref('2026.03.24.0401');
+                const appVersion = ref('2.4.1');
+                const buildId = ref('2026.03.24.0425');
                 const loginError = ref('');
                 const isAiCategorizing = ref(false);
                 const aiError = ref('');
@@ -543,7 +543,7 @@
                         }
                     };
 
-                    // Fallback timeout to ensure we don't stay in "syncing" forever
+                    // Fallback timeout
                     setTimeout(() => {
                         if (syncStatus.value === 'syncing') {
                             syncStatus.value = 'synced';
@@ -554,22 +554,36 @@
                     // Sync Expenses
                     const qExpenses = query(collection(db, `users/${uid}/expenses`), orderBy('date', 'asc'));
                     let isFirstExpensesSync = true;
-                    onSnapshot(qExpenses, (snapshot) => {
+                    onSnapshot(qExpenses, async (snapshot) => {
                         const cloudExpenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         
                         if (isFirstExpensesSync) {
                             isFirstExpensesSync = false;
                             if (cloudExpenses.length > 0) {
+                                // Cloud has data, merge or overwrite local
+                                // For simplicity and consistency, we trust cloud as source of truth if it exists
                                 expenses.value = cloudExpenses;
                                 save();
                             } else if (expenses.value.length > 0) {
-                                expenses.value.forEach(exp => {
-                                    setDoc(doc(db, `users/${uid}/expenses`, exp.id), { ...exp, uid });
-                                });
+                                // Cloud is empty, but local has data - upload all
+                                try {
+                                    const { writeBatch, doc } = FirebaseFirestore;
+                                    const batch = writeBatch(db);
+                                    expenses.value.forEach(exp => {
+                                        const docRef = doc(db, `users/${uid}/expenses`, exp.id);
+                                        batch.set(docRef, { ...exp, uid });
+                                    });
+                                    await batch.commit();
+                                } catch (error) {
+                                    console.error('Error uploading initial expenses:', error);
+                                }
                             }
                         } else {
-                            expenses.value = cloudExpenses;
-                            save();
+                            // Subsequent updates: only update if data actually changed to avoid UI flickers or race conditions
+                            if (JSON.stringify(expenses.value) !== JSON.stringify(cloudExpenses)) {
+                                expenses.value = cloudExpenses;
+                                save();
+                            }
                         }
                         
                         syncedCollections.expenses = true;
@@ -582,7 +596,7 @@
                     // Sync Savings
                     const qSavings = query(collection(db, `users/${uid}/savings`), orderBy('date', 'asc'));
                     let isFirstSavingsSync = true;
-                    onSnapshot(qSavings, (snapshot) => {
+                    onSnapshot(qSavings, async (snapshot) => {
                         const cloudSavings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         
                         if (isFirstSavingsSync) {
@@ -591,13 +605,23 @@
                                 savings.value = cloudSavings;
                                 save();
                             } else if (savings.value.length > 0) {
-                                savings.value.forEach(s => {
-                                    setDoc(doc(db, `users/${uid}/savings`, s.id), { ...s, uid });
-                                });
+                                try {
+                                    const { writeBatch, doc } = FirebaseFirestore;
+                                    const batch = writeBatch(db);
+                                    savings.value.forEach(s => {
+                                        const docRef = doc(db, `users/${uid}/savings`, s.id);
+                                        batch.set(docRef, { ...s, uid });
+                                    });
+                                    await batch.commit();
+                                } catch (error) {
+                                    console.error('Error uploading initial savings:', error);
+                                }
                             }
                         } else {
-                            savings.value = cloudSavings;
-                            save();
+                            if (JSON.stringify(savings.value) !== JSON.stringify(cloudSavings)) {
+                                savings.value = cloudSavings;
+                                save();
+                            }
                         }
                         
                         syncedCollections.savings = true;
@@ -610,7 +634,7 @@
                     // Sync Categories
                     const qCategories = query(collection(db, `users/${uid}/categories`));
                     let isFirstCategoriesSync = true;
-                    onSnapshot(qCategories, (snapshot) => {
+                    onSnapshot(qCategories, async (snapshot) => {
                         const cloudCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         
                         if (isFirstCategoriesSync) {
@@ -619,13 +643,23 @@
                                 categories.value = cloudCategories;
                                 save();
                             } else if (categories.value.length > 0) {
-                                categories.value.forEach(cat => {
-                                    setDoc(doc(db, `users/${uid}/categories`, cat.id), { ...cat, uid });
-                                });
+                                try {
+                                    const { writeBatch, doc } = FirebaseFirestore;
+                                    const batch = writeBatch(db);
+                                    categories.value.forEach(cat => {
+                                        const docRef = doc(db, `users/${uid}/categories`, cat.id);
+                                        batch.set(docRef, { ...cat, uid });
+                                    });
+                                    await batch.commit();
+                                } catch (error) {
+                                    console.error('Error uploading initial categories:', error);
+                                }
                             }
                         } else {
-                            categories.value = cloudCategories;
-                            save();
+                            if (JSON.stringify(categories.value) !== JSON.stringify(cloudCategories)) {
+                                categories.value = cloudCategories;
+                                save();
+                            }
                         }
                         
                         syncedCollections.categories = true;
@@ -639,14 +673,22 @@
                 const addExpense = async () => {
                     if (!entry.value.amount || !entry.value.categoryId) return;
 
+                    // Capture current values to avoid race conditions during reset
+                    const amount = parseFloat(entry.value.amount);
+                    const catId = entry.value.categoryId;
+                    const subCatId = entry.value.subCategoryId;
+                    const note = entry.value.note;
+
                     const newExp = {
-                        id: Date.now().toString(),
-                        amount: parseFloat(entry.value.amount),
-                        categoryId: entry.value.categoryId,
-                        subCategoryId: entry.value.subCategoryId,
-                        note: entry.value.note,
+                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        amount: amount,
+                        categoryId: catId,
+                        subCategoryId: subCatId,
+                        note: note,
                         date: new Date().toISOString()
                     };
+
+                    console.log('Adding expense:', newExp);
 
                     // Optimistiskais atjauninājums: pievienojam lokāli uzreiz
                     expenses.value.push(newExp);
@@ -655,11 +697,14 @@
                     if (user.value) {
                         try {
                             await setDoc(doc(db, `users/${user.value.uid}/expenses`, newExp.id), { ...newExp, uid: user.value.uid });
+                            console.log('Expense synced to Firestore');
                         } catch (error) {
                             console.error('Error adding expense to Firestore:', error);
+                            handleFirestoreError(error, 'create', `users/${user.value.uid}/expenses/${newExp.id}`);
                         }
                     }
                     
+                    // Reset form
                     entry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' };
                 };
 
