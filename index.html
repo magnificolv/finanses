@@ -245,15 +245,26 @@
                                 <span class="w-1.5 h-1.5 rounded-full" :class="[syncStatus === 'synced' ? 'bg-emerald-500' : syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' : 'bg-red-500']"></span>
                                 <span class="font-bold">{{ syncStatus === 'synced' ? 'Dati ir drošībā mākonī' : syncStatus === 'syncing' ? 'Notiek sinhronizācija...' : 'Sinhronizācijas kļūda' }}</span>
                             </div>
-                            <div class="flex flex-col items-end">
-                                <button @click="manualSync" :disabled="syncStatus === 'syncing'" 
-                                    class="flex items-center gap-2 px-3 py-1.5 bg-neutral-800 rounded-xl border border-neutral-700 hover:bg-neutral-700 transition-all disabled:opacity-50 group">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-neutral-400 group-hover:text-white" :class="syncStatus === 'syncing' ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                    <span class="text-[10px] font-bold text-neutral-400 group-hover:text-white">Sinhronizēt</span>
-                                </button>
-                                <p v-if="syncStatus === 'synced' && lastSynced" class="text-[8px] text-neutral-500 mt-1">Pēdējo reizi: {{ lastSynced.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</p>
+                            <div class="flex flex-col items-end gap-2">
+                                <div class="flex gap-2">
+                                    <button @click="pushToCloud" :disabled="syncStatus === 'syncing'" 
+                                        class="flex items-center gap-2 px-3 py-1.5 bg-neutral-800 rounded-xl border border-neutral-700 hover:bg-neutral-700 transition-all disabled:opacity-50 group"
+                                        title="Sūtīt datus uz mākoni">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <span class="text-[10px] font-bold text-neutral-400 group-hover:text-white">Sūtīt</span>
+                                    </button>
+                                    <button @click="pullFromCloud" :disabled="syncStatus === 'syncing'" 
+                                        class="flex items-center gap-2 px-3 py-1.5 bg-neutral-800 rounded-xl border border-neutral-700 hover:bg-neutral-700 transition-all disabled:opacity-50 group"
+                                        title="Lejuplādēt datus no mākoņa">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                                        </svg>
+                                        <span class="text-[10px] font-bold text-neutral-400 group-hover:text-white">Saņemt</span>
+                                    </button>
+                                </div>
+                                <p v-if="lastSynced" class="text-[8px] text-neutral-500">Pēdējā sinhronizācija: {{ lastSynced.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</p>
                             </div>
                         </div>
                         <button @click="logout" class="w-full py-2 bg-neutral-800 text-neutral-400 rounded-xl text-xs font-medium border border-neutral-700">Izrakstīties</button>
@@ -412,7 +423,7 @@
                 const user = ref(null);
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
                 const lastSynced = ref(null);
-                const appVersion = ref('2.4.1');
+                const appVersion = ref('3.0.0');
                 const buildId = ref('2026.03.24.0425');
                 const loginError = ref('');
                 const isAiCategorizing = ref(false);
@@ -527,153 +538,86 @@
                     }
                 };
 
-                const manualSync = () => {
+                const pushToCloud = async () => {
                     if (!user.value) return;
-                    setupFirestoreSync(user.value.uid);
-                };
-
-                const setupFirestoreSync = (uid) => {
-                    syncStatus.value = 'syncing';
-                    let syncedCollections = { expenses: false, savings: false, categories: false };
-
-                    const checkAllSynced = () => {
-                        if (syncedCollections.expenses && syncedCollections.savings && syncedCollections.categories) {
-                            syncStatus.value = 'synced';
-                            lastSynced.value = new Date();
-                        }
-                    };
-
-                    // Fallback timeout
-                    setTimeout(() => {
-                        if (syncStatus.value === 'syncing') {
-                            syncStatus.value = 'synced';
-                            lastSynced.value = new Date();
-                        }
-                    }, 5000);
+                    if (!confirm('Vai tiešām vēlaties sūtīt visus vietējos datus uz mākoni? Tas aizstās datus mākonī.')) return;
                     
-                    // Sync Expenses
-                    const qExpenses = query(collection(db, `users/${uid}/expenses`), orderBy('date', 'asc'));
-                    let isFirstExpensesSync = true;
-                    onSnapshot(qExpenses, async (snapshot) => {
-                        const cloudExpenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    syncStatus.value = 'syncing';
+                    const uid = user.value.uid;
+                    try {
+                        const { writeBatch, doc, collection, getDocs } = FirebaseFirestore;
                         
-                        if (isFirstExpensesSync) {
-                            isFirstExpensesSync = false;
-                            if (cloudExpenses.length > 0) {
-                                // Cloud has data, merge or overwrite local
-                                // For simplicity and consistency, we trust cloud as source of truth if it exists
-                                expenses.value = cloudExpenses;
-                                save();
-                            } else if (expenses.value.length > 0) {
-                                // Cloud is empty, but local has data - upload all
-                                try {
-                                    const { writeBatch, doc } = FirebaseFirestore;
-                                    const batch = writeBatch(db);
-                                    expenses.value.forEach(exp => {
-                                        const docRef = doc(db, `users/${uid}/expenses`, exp.id);
-                                        batch.set(docRef, { ...exp, uid });
-                                    });
-                                    await batch.commit();
-                                } catch (error) {
-                                    console.error('Error uploading initial expenses:', error);
-                                }
-                            }
-                        } else {
-                            // Subsequent updates: only update if data actually changed to avoid UI flickers or race conditions
-                            if (JSON.stringify(expenses.value) !== JSON.stringify(cloudExpenses)) {
-                                expenses.value = cloudExpenses;
-                                save();
-                            }
-                        }
-                        
-                        syncedCollections.expenses = true;
-                        checkAllSynced();
-                    }, (error) => {
-                        console.error('Expenses sync error:', error);
-                        syncStatus.value = 'error';
-                    });
+                        const syncCollection = async (colName, data) => {
+                            const colRef = collection(db, `users/${uid}/${colName}`);
+                            const snapshot = await getDocs(colRef);
+                            
+                            // Delete existing
+                            const deleteBatch = writeBatch(db);
+                            snapshot.docs.forEach(d => deleteBatch.delete(d.ref));
+                            await deleteBatch.commit();
+                            
+                            // Upload new
+                            const uploadBatch = writeBatch(db);
+                            data.forEach(item => {
+                                const docRef = doc(db, `users/${uid}/${colName}`, item.id);
+                                uploadBatch.set(docRef, { ...item, uid });
+                            });
+                            await uploadBatch.commit();
+                        };
 
-                    // Sync Savings
-                    const qSavings = query(collection(db, `users/${uid}/savings`), orderBy('date', 'asc'));
-                    let isFirstSavingsSync = true;
-                    onSnapshot(qSavings, async (snapshot) => {
-                        const cloudSavings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        
-                        if (isFirstSavingsSync) {
-                            isFirstSavingsSync = false;
-                            if (cloudSavings.length > 0) {
-                                savings.value = cloudSavings;
-                                save();
-                            } else if (savings.value.length > 0) {
-                                try {
-                                    const { writeBatch, doc } = FirebaseFirestore;
-                                    const batch = writeBatch(db);
-                                    savings.value.forEach(s => {
-                                        const docRef = doc(db, `users/${uid}/savings`, s.id);
-                                        batch.set(docRef, { ...s, uid });
-                                    });
-                                    await batch.commit();
-                                } catch (error) {
-                                    console.error('Error uploading initial savings:', error);
-                                }
-                            }
-                        } else {
-                            if (JSON.stringify(savings.value) !== JSON.stringify(cloudSavings)) {
-                                savings.value = cloudSavings;
-                                save();
-                            }
-                        }
-                        
-                        syncedCollections.savings = true;
-                        checkAllSynced();
-                    }, (error) => {
-                        console.error('Savings sync error:', error);
-                        syncStatus.value = 'error';
-                    });
+                        await syncCollection('expenses', expenses.value);
+                        await syncCollection('savings', savings.value);
+                        await syncCollection('categories', categories.value);
 
-                    // Sync Categories
-                    const qCategories = query(collection(db, `users/${uid}/categories`));
-                    let isFirstCategoriesSync = true;
-                    onSnapshot(qCategories, async (snapshot) => {
-                        const cloudCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        
-                        if (isFirstCategoriesSync) {
-                            isFirstCategoriesSync = false;
-                            if (cloudCategories.length > 0) {
-                                categories.value = cloudCategories;
-                                save();
-                            } else if (categories.value.length > 0) {
-                                try {
-                                    const { writeBatch, doc } = FirebaseFirestore;
-                                    const batch = writeBatch(db);
-                                    categories.value.forEach(cat => {
-                                        const docRef = doc(db, `users/${uid}/categories`, cat.id);
-                                        batch.set(docRef, { ...cat, uid });
-                                    });
-                                    await batch.commit();
-                                } catch (error) {
-                                    console.error('Error uploading initial categories:', error);
-                                }
-                            }
-                        } else {
-                            if (JSON.stringify(categories.value) !== JSON.stringify(cloudCategories)) {
-                                categories.value = cloudCategories;
-                                save();
-                            }
-                        }
-                        
-                        syncedCollections.categories = true;
-                        checkAllSynced();
-                    }, (error) => {
-                        console.error('Categories sync error:', error);
+                        syncStatus.value = 'synced';
+                        lastSynced.value = new Date();
+                        alert('Dati veiksmīgi nosūtīti uz mākoni!');
+                    } catch (error) {
+                        console.error('Push to cloud error:', error);
                         syncStatus.value = 'error';
-                    });
+                        alert('Kļūda sūtot datus: ' + error.message);
+                    }
                 };
 
-                const addExpense = async () => {
+                const pullFromCloud = async () => {
+                    if (!user.value) return;
+                    if (!confirm('Vai tiešām vēlaties lejuplādēt datus no mākoņa? Tas aizstās visus datus šajā ierīcē.')) return;
+
+                    syncStatus.value = 'syncing';
+                    const uid = user.value.uid;
+                    try {
+                        const { collection, getDocs, query, orderBy } = FirebaseFirestore;
+                        
+                        const fetchCol = async (colName, orderField) => {
+                            let q = collection(db, `users/${uid}/${colName}`);
+                            if (orderField) q = query(q, orderBy(orderField, 'asc'));
+                            const snapshot = await getDocs(q);
+                            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        };
+
+                        const cloudExpenses = await fetchCol('expenses', 'date');
+                        const cloudSavings = await fetchCol('savings', 'date');
+                        const cloudCategories = await fetchCol('categories');
+
+                        expenses.value = cloudExpenses;
+                        savings.value = cloudSavings;
+                        categories.value = cloudCategories;
+                        
+                        save();
+                        
+                        syncStatus.value = 'synced';
+                        lastSynced.value = new Date();
+                        alert('Dati veiksmīgi lejuplādēti no mākoņa!');
+                    } catch (error) {
+                        console.error('Pull from cloud error:', error);
+                        syncStatus.value = 'error';
+                        alert('Kļūda lejuplādējot datus: ' + error.message);
+                    }
+                };
+
+                const addExpense = () => {
                     if (!entry.value.amount || !entry.value.categoryId) return;
 
-                    // Capture current values to avoid race conditions during reset
                     const amount = parseFloat(entry.value.amount);
                     const catId = entry.value.categoryId;
                     const subCatId = entry.value.subCategoryId;
@@ -688,21 +632,9 @@
                         date: new Date().toISOString()
                     };
 
-                    console.log('Adding expense:', newExp);
-
-                    // Optimistiskais atjauninājums: pievienojam lokāli uzreiz
+                    // Pievienojam lokāli
                     expenses.value.push(newExp);
                     save();
-
-                    if (user.value) {
-                        try {
-                            await setDoc(doc(db, `users/${user.value.uid}/expenses`, newExp.id), { ...newExp, uid: user.value.uid });
-                            console.log('Expense synced to Firestore');
-                        } catch (error) {
-                            console.error('Error adding expense to Firestore:', error);
-                            handleFirestoreError(error, 'create', `users/${user.value.uid}/expenses/${newExp.id}`);
-                        }
-                    }
                     
                     // Reset form
                     entry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' };
@@ -730,23 +662,14 @@
                     throw new Error(JSON.stringify(errInfo));
                 };
 
-                const deleteExpense = async (id) => {
+                const deleteExpense = (id) => {
                     if (confirm('Vai tiešām vēlaties dzēst šo ierakstu?')) {
-                        // Optimistiska dzēšana
                         expenses.value = expenses.value.filter(e => e.id !== id);
                         save();
-
-                        if (user.value) {
-                            try {
-                                await deleteDoc(doc(db, `users/${user.value.uid}/expenses`, id));
-                            } catch (error) {
-                                handleFirestoreError(error, 'delete', `users/${user.value.uid}/expenses/${id}`);
-                            }
-                        }
                     }
                 };
 
-                const addSaving = async () => {
+                const addSaving = () => {
                     if (!saving.value.amount || !saving.value.desc) return;
 
                     const newSaving = {
@@ -756,39 +679,20 @@
                         date: new Date().toISOString()
                     };
 
-                    // Optimistiskais atjauninājums
                     savings.value.push(newSaving);
                     save();
-
-                    if (user.value) {
-                        try {
-                            await setDoc(doc(db, `users/${user.value.uid}/savings`, newSaving.id), { ...newSaving, uid: user.value.uid });
-                        } catch (error) {
-                            console.error('Error adding saving to Firestore:', error);
-                        }
-                    }
                     
                     saving.value = { amount: '', desc: '' };
                 };
 
-                const deleteSaving = async (id) => {
+                const deleteSaving = (id) => {
                     if (confirm('Vai tiešām vēlaties dzēst šo ietaupījumu?')) {
-                        // Optimistiska dzēšana
                         savings.value = savings.value.filter(s => s.id !== id);
                         save();
-
-                        if (user.value) {
-                            try {
-                                await deleteDoc(doc(db, `users/${user.value.uid}/savings`, id));
-                            } catch (error) {
-                                handleFirestoreError(error, 'delete', `users/${user.value.uid}/savings/${id}`);
-                            }
-                        }
                     }
                 };
 
-                // Category Management Methods
-                const addCategory = async () => {
+                const addCategory = () => {
                     if (!newCategoryName.value.trim()) return;
                     const newCat = {
                         id: Date.now().toString(),
@@ -796,17 +700,8 @@
                         subCategories: []
                     };
 
-                    // Optimistisks atjauninājums
                     categories.value.push(newCat);
                     save();
-
-                    if (user.value) {
-                        try {
-                            await setDoc(doc(db, `users/${user.value.uid}/categories`, newCat.id), { ...newCat, uid: user.value.uid });
-                        } catch (error) {
-                            handleFirestoreError(error, 'create', `users/${user.value.uid}/categories/${newCat.id}`);
-                        }
-                    }
                     
                     newCategoryName.value = '';
                     showAddCategory.value = false;
@@ -817,54 +712,29 @@
                     editingCategoryName.value = cat.name;
                 };
 
-                const updateCategory = async (id) => {
+                const updateCategory = (id) => {
                     const cat = categories.value.find(c => c.id === id);
                     if (cat && editingCategoryName.value.trim()) {
                         cat.name = editingCategoryName.value.trim();
                         save();
-                        
-                        if (user.value) {
-                            try {
-                                await setDoc(doc(db, `users/${user.value.uid}/categories`, id), { ...cat, uid: user.value.uid });
-                            } catch (error) {
-                                handleFirestoreError(error, 'update', `users/${user.value.uid}/categories/${id}`);
-                            }
-                        }
                         editingCategoryId.value = null;
                     }
                 };
 
-                const deleteCategory = async (id) => {
+                const deleteCategory = (id) => {
                     if (confirm('Vai tiešām vēlaties dzēst šo kategoriju un visas tās apakškategorijas?')) {
-                        // Optimistiska dzēšana
                         categories.value = categories.value.filter(c => c.id !== id);
                         save();
-
-                        if (user.value) {
-                            try {
-                                await deleteDoc(doc(db, `users/${user.value.uid}/categories`, id));
-                            } catch (error) {
-                                handleFirestoreError(error, 'delete', `users/${user.value.uid}/categories/${id}`);
-                            }
-                        }
                     }
                 };
 
-                const addSubCategory = async (catId) => {
+                const addSubCategory = (catId) => {
                     if (!newSubName.value.trim()) return;
                     const cat = categories.value.find(c => c.id === catId);
                     if (cat) {
                         const newSub = { id: Date.now().toString(), name: newSubName.value.trim() };
                         cat.subCategories.push(newSub);
                         save();
-
-                        if (user.value) {
-                            try {
-                                await setDoc(doc(db, `users/${user.value.uid}/categories`, catId), { ...cat, uid: user.value.uid });
-                            } catch (error) {
-                                handleFirestoreError(error, 'update', `users/${user.value.uid}/categories/${catId}`);
-                            }
-                        }
                         
                         newSubName.value = '';
                         addingSubToId.value = null;
@@ -876,7 +746,7 @@
                     editingSubName.value = sub.name;
                 };
 
-                const updateSubCategory = async (catId, subId) => {
+                const updateSubCategory = (catId, subId) => {
                     if (!editingSubName.value.trim()) return;
                     const cat = categories.value.find(c => c.id === catId);
                     if (cat) {
@@ -884,33 +754,17 @@
                         if (sub) {
                             sub.name = editingSubName.value.trim();
                             save();
-
-                            if (user.value) {
-                                try {
-                                    await setDoc(doc(db, `users/${user.value.uid}/categories`, catId), { ...cat, uid: user.value.uid });
-                                } catch (error) {
-                                    handleFirestoreError(error, 'update', `users/${user.value.uid}/categories/${catId}`);
-                                }
-                            }
                         }
                         editingSubId.value = null;
                     }
                 };
 
-                const deleteSubCategory = async (catId, subId) => {
+                const deleteSubCategory = (catId, subId) => {
                     if (confirm('Vai tiešām vēlaties dzēst šo apakškategoriju?')) {
                         const cat = categories.value.find(c => c.id === catId);
                         if (cat) {
                             cat.subCategories = cat.subCategories.filter(s => s.id !== subId);
                             save();
-
-                            if (user.value) {
-                                try {
-                                    await setDoc(doc(db, `users/${user.value.uid}/categories`, catId), { ...cat, uid: user.value.uid });
-                                } catch (error) {
-                                    handleFirestoreError(error, 'update', `users/${user.value.uid}/categories/${catId}`);
-                                }
-                            }
                         }
                     }
                 };
@@ -1057,7 +911,8 @@
                     onAuthStateChanged(auth, (firebaseUser) => {
                         if (firebaseUser) {
                             user.value = firebaseUser;
-                            setupFirestoreSync(firebaseUser.uid);
+                            // No automatic sync on login as per user request
+                            syncStatus.value = 'offline';
                         } else {
                             user.value = null;
                             syncStatus.value = 'offline';
@@ -1102,7 +957,7 @@
                     selectCategory, addExpense, deleteExpense, addSaving, deleteSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
-                    checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus, manualSync, lastSynced,
+                    checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus, pushToCloud, pullFromCloud, lastSynced,
                     expandedCategoryId, toggleCategory, categorizeWithAi, isAiCategorizing, aiError, loginError, appVersion, buildId
                 };
             }
