@@ -197,7 +197,8 @@
                     <div class="flex justify-between items-center">
                         <h3 class="text-lg font-bold">Sistēma</h3>
                         <div class="text-right">
-                            <p class="text-[10px] text-neutral-500">Versija 2.2.0</p>
+                            <p class="text-[10px] text-neutral-500">Versija {{ appVersion }}</p>
+                            <p class="text-[8px] text-neutral-600">Build: {{ buildId }}</p>
                             <p class="text-[10px] text-neutral-600">Firebase Sync</p>
                         </div>
                     </div>
@@ -406,6 +407,8 @@
                 const user = ref(null);
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
                 const lastSynced = ref(null);
+                const appVersion = ref('2.3.0');
+                const buildId = ref('2026.03.24.0116');
                 const loginError = ref('');
                 const isAiCategorizing = ref(false);
                 const aiError = ref('');
@@ -991,7 +994,7 @@
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
                     checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus, manualSync, lastSynced,
-                    expandedCategoryId, toggleCategory, categorizeWithAi, isAiCategorizing, aiError, loginError
+                    expandedCategoryId, toggleCategory, categorizeWithAi, isAiCategorizing, aiError, loginError, appVersion, buildId
                 };
             }
         }).mount('#app');
