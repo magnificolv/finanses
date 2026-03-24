@@ -67,8 +67,16 @@
 
                     <div class="mt-6">
                         <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Piezīme</label>
-                        <input type="text" v-model="entry.note" placeholder="Kas tika nopirkts?" 
-                            class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-neutral-500">
+                        <div class="relative">
+                            <input type="text" v-model="entry.note" placeholder="Kas tika nopirkts?" 
+                                class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-neutral-500 pr-12">
+                            <button v-if="apiKey && entry.note" @click="categorizeWithAi" :disabled="isAiCategorizing"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/40 transition-all disabled:opacity-50">
+                                <svg v-if="!isAiCategorizing" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                <svg v-else class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            </button>
+                        </div>
+                        <p v-if="aiError" class="text-[10px] text-red-500 mt-1">{{ aiError }}</p>
                     </div>
 
                     <button @click="addExpense" :disabled="!entry.amount || !entry.categoryId"
@@ -341,6 +349,7 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js'
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js'
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, getDocFromServer, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'
+        import { GoogleGenAI } from "@google/genai"
         
         const firebaseConfig = {
           projectId: "gen-lang-client-0124777388",
@@ -373,6 +382,8 @@
 
                 const user = ref(null);
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
+                const isAiCategorizing = ref(false);
+                const aiError = ref('');
                 const entry = ref({ amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' });
                 const saving = ref({ amount: '', desc: '' });
                 
@@ -439,6 +450,38 @@
                         // Keep local data
                     } catch (error) {
                         console.error('Logout error:', error);
+                    }
+                };
+
+                const categorizeWithAi = async () => {
+                    if (!apiKey.value || !entry.value.note) return;
+                    
+                    isAiCategorizing.value = true;
+                    aiError.value = '';
+
+                    try {
+                        const ai = new GoogleGenAI({ apiKey: apiKey.value });
+                        const model = ai.models.generateContent({
+                            model: "gemini-1.5-flash",
+                            contents: `Analizē šo pirkuma piezīmi: "${entry.value.note}". 
+                            Izvēlies piemērotāko kategoriju un apakškategoriju no šī saraksta: ${JSON.stringify(categories.value)}.
+                            Atbildi TIKAI JSON formātā: {"categoryId": "id", "subCategoryId": "id"}. 
+                            Ja apakškategorija neeksistē, lieto "uncategorized". Ja neesi pārliecināts, mini ticamāko.`
+                        });
+
+                        const response = await model;
+                        const text = response.text;
+                        const result = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+                        if (result.categoryId) {
+                            entry.value.categoryId = result.categoryId;
+                            entry.value.subCategoryId = result.subCategoryId || 'uncategorized';
+                        }
+                    } catch (error) {
+                        console.error('AI Categorization error:', error);
+                        aiError.value = 'AI kļūda. Mēģini vēlreiz vai izvēlies manuāli.';
+                    } finally {
+                        isAiCategorizing.value = false;
                     }
                 };
 
@@ -882,7 +925,7 @@
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
                     checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus,
-                    expandedCategoryId, toggleCategory
+                    expandedCategoryId, toggleCategory, categorizeWithAi, isAiCategorizing, aiError
                 };
             }
         }).mount('#app');
