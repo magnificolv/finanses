@@ -424,7 +424,7 @@
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
                 const lastSynced = ref(null);
                 const appVersion = ref('3.0.0');
-                const buildId = ref('2026.03.24.0425');
+                const buildId = ref('2026.03.24.0444');
                 const loginError = ref('');
                 const isAiCategorizing = ref(false);
                 const aiError = ref('');
@@ -946,6 +946,11 @@
                                 refreshing = true;
                             }
                         });
+                        
+                        // Check for updates every 30 minutes
+                        setInterval(() => {
+                            if (registration) registration.update();
+                        }, 30 * 60 * 1000);
                     }
                 });
 
