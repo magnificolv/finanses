@@ -241,10 +241,11 @@
                             </div>
                             <div class="flex flex-col items-end">
                                 <button @click="manualSync" :disabled="syncStatus === 'syncing'" 
-                                    class="p-1.5 bg-neutral-800 rounded-lg border border-neutral-700 hover:bg-neutral-700 transition-all disabled:opacity-50 group">
+                                    class="flex items-center gap-2 px-3 py-1.5 bg-neutral-800 rounded-xl border border-neutral-700 hover:bg-neutral-700 transition-all disabled:opacity-50 group">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-neutral-400 group-hover:text-white" :class="syncStatus === 'syncing' ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
+                                    <span class="text-[10px] font-bold text-neutral-400 group-hover:text-white">Sinhronizēt</span>
                                 </button>
                                 <p v-if="syncStatus === 'synced' && lastSynced" class="text-[8px] text-neutral-500 mt-1">Pēdējo reizi: {{ lastSynced.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</p>
                             </div>
@@ -520,14 +521,7 @@
 
                 const manualSync = () => {
                     if (!user.value) return;
-                    syncStatus.value = 'syncing';
-                    // Snapshot listeners are already active, so we just trigger a visual refresh
-                    // and ensure the status updates correctly
-                    setTimeout(() => {
-                        if (syncStatus.value === 'syncing') {
-                            syncStatus.value = 'synced';
-                        }
-                    }, 1500);
+                    setupFirestoreSync(user.value.uid);
                 };
 
                 const setupFirestoreSync = (uid) => {
@@ -540,6 +534,14 @@
                             lastSynced.value = new Date();
                         }
                     };
+
+                    // Fallback timeout to ensure we don't stay in "syncing" forever
+                    setTimeout(() => {
+                        if (syncStatus.value === 'syncing') {
+                            syncStatus.value = 'synced';
+                            lastSynced.value = new Date();
+                        }
+                    }, 5000);
                     
                     // Sync Expenses
                     const qExpenses = query(collection(db, `users/${uid}/expenses`), orderBy('date', 'asc'));
