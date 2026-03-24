@@ -1,6 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
+import fs from 'fs';
 import {defineConfig, loadEnv} from 'vite';
+
+const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+const buildId = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 12);
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
@@ -9,6 +13,8 @@ export default defineConfig(({mode}) => {
     plugins: [tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      '__APP_VERSION__': JSON.stringify(pkg.version),
+      '__BUILD_ID__': JSON.stringify(buildId),
     },
     resolve: {
       alias: {
