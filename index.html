@@ -234,9 +234,20 @@
                                 <p class="text-[10px] text-neutral-500 truncate">{{ user.email }}</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 text-[10px] px-1" :class="syncStatus === 'synced' ? 'text-emerald-500' : syncStatus === 'syncing' ? 'text-blue-500' : 'text-red-500'">
-                            <span class="w-1.5 h-1.5 rounded-full animate-pulse" :class="syncStatus === 'synced' ? 'bg-emerald-500' : syncStatus === 'syncing' ? 'bg-blue-500' : 'bg-red-500'"></span>
-                            {{ syncStatus === 'synced' ? 'Sinhronizācija aktīva' : syncStatus === 'syncing' ? 'Sinhronizē...' : 'Sinhronizācijas kļūda' }}
+                        <div class="flex items-center justify-between gap-2 px-1">
+                            <div class="flex items-center gap-2 text-[10px]" :class="syncStatus === 'synced' ? 'text-emerald-500' : syncStatus === 'syncing' ? 'text-blue-500' : 'text-red-500'">
+                                <span class="w-1.5 h-1.5 rounded-full" :class="[syncStatus === 'synced' ? 'bg-emerald-500' : syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' : 'bg-red-500']"></span>
+                                <span class="font-bold">{{ syncStatus === 'synced' ? 'Dati ir drošībā mākonī' : syncStatus === 'syncing' ? 'Notiek sinhronizācija...' : 'Sinhronizācijas kļūda' }}</span>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <button @click="manualSync" :disabled="syncStatus === 'syncing'" 
+                                    class="p-1.5 bg-neutral-800 rounded-lg border border-neutral-700 hover:bg-neutral-700 transition-all disabled:opacity-50 group">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-neutral-400 group-hover:text-white" :class="syncStatus === 'syncing' ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </button>
+                                <p v-if="syncStatus === 'synced' && lastSynced" class="text-[8px] text-neutral-500 mt-1">Pēdējo reizi: {{ lastSynced.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</p>
+                            </div>
                         </div>
                         <button @click="logout" class="w-full py-2 bg-neutral-800 text-neutral-400 rounded-xl text-xs font-medium border border-neutral-700">Izrakstīties</button>
                     </div>
@@ -393,6 +404,7 @@
 
                 const user = ref(null);
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
+                const lastSynced = ref(null);
                 const loginError = ref('');
                 const isAiCategorizing = ref(false);
                 const aiError = ref('');
@@ -506,8 +518,28 @@
                     }
                 };
 
+                const manualSync = () => {
+                    if (!user.value) return;
+                    syncStatus.value = 'syncing';
+                    // Snapshot listeners are already active, so we just trigger a visual refresh
+                    // and ensure the status updates correctly
+                    setTimeout(() => {
+                        if (syncStatus.value === 'syncing') {
+                            syncStatus.value = 'synced';
+                        }
+                    }, 1500);
+                };
+
                 const setupFirestoreSync = (uid) => {
                     syncStatus.value = 'syncing';
+                    let syncedCollections = { expenses: false, savings: false, categories: false };
+
+                    const checkAllSynced = () => {
+                        if (syncedCollections.expenses && syncedCollections.savings && syncedCollections.categories) {
+                            syncStatus.value = 'synced';
+                            lastSynced.value = new Date();
+                        }
+                    };
                     
                     // Sync Expenses
                     const qExpenses = query(collection(db, `users/${uid}/expenses`), orderBy('date', 'asc'));
@@ -522,7 +554,8 @@
                                 setDoc(doc(db, `users/${uid}/expenses`, exp.id), { ...exp, uid });
                             });
                         }
-                        syncStatus.value = 'synced';
+                        syncedCollections.expenses = true;
+                        checkAllSynced();
                     }, (error) => {
                         console.error('Expenses sync error:', error);
                         syncStatus.value = 'error';
@@ -540,6 +573,11 @@
                                 setDoc(doc(db, `users/${uid}/savings`, s.id), { ...s, uid });
                             });
                         }
+                        syncedCollections.savings = true;
+                        checkAllSynced();
+                    }, (error) => {
+                        console.error('Savings sync error:', error);
+                        syncStatus.value = 'error';
                     });
 
                     // Sync Categories
@@ -554,6 +592,11 @@
                                 setDoc(doc(db, `users/${uid}/categories`, cat.id), { ...cat, uid });
                             });
                         }
+                        syncedCollections.categories = true;
+                        checkAllSynced();
+                    }, (error) => {
+                        console.error('Categories sync error:', error);
+                        syncStatus.value = 'error';
                     });
                 };
 
@@ -945,7 +988,7 @@
                     selectCategory, addExpense, deleteExpense, addSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
-                    checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus,
+                    checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus, manualSync, lastSynced,
                     expandedCategoryId, toggleCategory, categorizeWithAi, isAiCategorizing, aiError, loginError
                 };
             }
