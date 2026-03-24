@@ -49,6 +49,22 @@
         "uid": { "type": "string" }
       },
       "required": ["name", "uid"]
+    },
+    "RecurringExpense": {
+      "title": "RecurringExpense",
+      "description": "A recurring monthly expense.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "categoryId": { "type": "string" },
+        "subCategoryId": { "type": "string" },
+        "note": { "type": "string" },
+        "dayOfMonth": { "type": "integer" },
+        "lastProcessedMonth": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["amount", "categoryId", "dayOfMonth", "uid"]
     }
   },
   "firestore": {
@@ -63,6 +79,10 @@
     "/users/{userId}/categories/{categoryId}": {
       "schema": "Category",
       "description": "User's custom categories."
+    },
+    "/users/{userId}/recurringExpenses/{recurringId}": {
+      "schema": "RecurringExpense",
+      "description": "User's recurring expenses."
     }
   }
 }

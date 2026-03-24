@@ -195,6 +195,83 @@
                 </div>
             </div>
 
+            <!-- RECURRING TAB -->
+            <div v-if="activeTab === 'recurring'" class="space-y-6">
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-2 text-blue-400">Pievienot periodisko tēriņu</h3>
+                    <p class="text-xs text-neutral-500 mb-6">Tēriņi, kas atkārtojas katru mēnesi (piem. īre, Netflix).</p>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Summa (€)</label>
+                            <input type="number" v-model="recurringEntry.amount" placeholder="0.00" 
+                                class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Mēneša diena (1-31)</label>
+                            <input type="number" v-model="recurringEntry.dayOfMonth" min="1" max="31" placeholder="1" 
+                                class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Kategorija</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button v-for="cat in categories" :key="cat.id" 
+                                    @click="recurringEntry.categoryId = cat.id; recurringEntry.subCategoryId = 'uncategorized'"
+                                    :class="['p-2 rounded-xl border text-[10px] font-medium transition-all flex flex-col items-center gap-1', 
+                                             recurringEntry.categoryId === cat.id ? 'bg-blue-600 border-blue-500 text-white' : 'bg-neutral-800 border-neutral-700 text-neutral-400']">
+                                    <span>{{ cat.name }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="recurringEntry.categoryId" class="animate-in fade-in duration-300">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Apakškategorija</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="sub in selectedCategorySubs" :key="sub.id"
+                                    @click="recurringEntry.subCategoryId = sub.id"
+                                    :class="['px-3 py-1 rounded-full text-[10px] border transition-all', 
+                                             recurringEntry.subCategoryId === sub.id ? 'bg-neutral-100 text-neutral-900' : 'bg-neutral-800 text-neutral-400 border-neutral-700']">
+                                    {{ sub.name }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2">Piezīme</label>
+                            <input type="text" v-model="recurringEntry.note" placeholder="Piem. Dzīvokļa īre" 
+                                class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500">
+                        </div>
+
+                        <button @click="addRecurringExpense" :disabled="!recurringEntry.amount || !recurringEntry.categoryId"
+                            class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-4 rounded-2xl shadow-lg transition-all">
+                            Saglabāt periodisko
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-2">Tavi periodiskie tēriņi</h3>
+                    <div v-if="recurringExpenses.length === 0" class="text-center py-8 bg-neutral-900 rounded-2xl border border-neutral-800">
+                        <p class="text-neutral-500 text-xs">Nav pievienots neviens periodisks tēriņš.</p>
+                    </div>
+                    <div v-for="rec in recurringExpenses" :key="rec.id" class="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold text-sm">{{ getCategoryName(rec.categoryId) }}</p>
+                            <p class="text-xs text-neutral-300 mt-0.5">{{ rec.note }}</p>
+                            <p class="text-[10px] text-neutral-500 mt-1">Katru mēnesi, {{ rec.dayOfMonth }}. datumā</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="font-mono font-bold text-blue-400">€{{ rec.amount.toFixed(2) }}</span>
+                            <button @click="deleteRecurringExpense(rec.id)" class="text-neutral-700 hover:text-red-500 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- SETTINGS TAB -->
             <div v-if="activeTab === 'settings'" class="space-y-6">
                 <!-- 1. Sistēmas Info & Atjauninājumi -->
@@ -379,6 +456,9 @@
             <button @click="activeTab = 'savings'" :class="activeTab === 'savings' ? 'text-emerald-500' : 'text-neutral-500'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
             </button>
+            <button @click="activeTab = 'recurring'" :class="activeTab === 'recurring' ? 'text-blue-500' : 'text-neutral-500'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            </button>
             <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'text-blue-500' : 'text-neutral-500'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
@@ -411,6 +491,7 @@
                 const activeTab = ref('entry');
                 const expenses = ref(JSON.parse(localStorage.getItem('expenses') || '[]'));
                 const savings = ref(JSON.parse(localStorage.getItem('savings') || '[]'));
+                const recurringExpenses = ref(JSON.parse(localStorage.getItem('recurringExpenses') || '[]'));
                 const apiKey = ref(localStorage.getItem('gemini_api_key') || '');
                 const categories = ref(JSON.parse(localStorage.getItem('categories') || JSON.stringify([
                     { id: 'food', name: 'Ēdiens', subCategories: [{id: '1', name: 'Pārtika'}, {id: '2', name: 'Restorāni'}] },
@@ -429,6 +510,7 @@
                 const isAiCategorizing = ref(false);
                 const aiError = ref('');
                 const entry = ref({ amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' });
+                const recurringEntry = ref({ amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '', dayOfMonth: 1 });
                 const saving = ref({ amount: '', desc: '' });
                 
                 // Category Management State
@@ -454,12 +536,13 @@
                 let chart = null;
 
                 const activeTabName = computed(() => {
-                    const names = { entry: 'Jauns ieraksts', history: 'Vēsture', stats: 'Statistika', savings: 'Ietaupījumi', settings: 'Iestatījumi' };
+                    const names = { entry: 'Jauns ieraksts', history: 'Vēsture', stats: 'Statistika', savings: 'Ietaupījumi', recurring: 'Periodiskie', settings: 'Iestatījumi' };
                     return names[activeTab.value];
                 });
 
                 const selectedCategorySubs = computed(() => {
-                    const cat = categories.value.find(c => c.id === entry.value.categoryId);
+                    const target = activeTab.value === 'recurring' ? recurringEntry.value : entry.value;
+                    const cat = categories.value.find(c => c.id === target.categoryId);
                     return cat ? cat.subCategories : [];
                 });
 
@@ -568,6 +651,7 @@
                         await syncCollection('expenses', expenses.value);
                         await syncCollection('savings', savings.value);
                         await syncCollection('categories', categories.value);
+                        await syncCollection('recurringExpenses', recurringExpenses.value);
 
                         syncStatus.value = 'synced';
                         lastSynced.value = new Date();
@@ -592,21 +676,28 @@
                             let q = collection(db, `users/${uid}/${colName}`);
                             if (orderField) q = query(q, orderBy(orderField, 'asc'));
                             const snapshot = await getDocs(q);
-                            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            return snapshot.docs.map(doc => {
+                                const data = doc.data();
+                                delete data.uid;
+                                return { id: doc.id, ...data };
+                            });
                         };
 
                         const cloudExpenses = await fetchCol('expenses', 'date');
                         const cloudSavings = await fetchCol('savings', 'date');
                         const cloudCategories = await fetchCol('categories');
+                        const cloudRecurring = await fetchCol('recurringExpenses');
 
                         expenses.value = cloudExpenses;
                         savings.value = cloudSavings;
                         categories.value = cloudCategories;
+                        recurringExpenses.value = cloudRecurring;
                         
                         save();
                         
                         syncStatus.value = 'synced';
                         lastSynced.value = new Date();
+                        processRecurringExpenses();
                         alert('Dati veiksmīgi lejuplādēti no mākoņa!');
                     } catch (error) {
                         console.error('Pull from cloud error:', error);
@@ -638,6 +729,61 @@
                     
                     // Reset form
                     entry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '' };
+                };
+
+                const addRecurringExpense = () => {
+                    if (!recurringEntry.value.amount || !recurringEntry.value.categoryId) return;
+                    
+                    const newRec = {
+                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        amount: parseFloat(recurringEntry.value.amount),
+                        categoryId: recurringEntry.value.categoryId,
+                        subCategoryId: recurringEntry.value.subCategoryId,
+                        note: recurringEntry.value.note,
+                        dayOfMonth: parseInt(recurringEntry.value.dayOfMonth) || 1,
+                        lastProcessedMonth: ''
+                    };
+                    
+                    recurringExpenses.value.push(newRec);
+                    save();
+                    
+                    // Reset entry
+                    recurringEntry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '', dayOfMonth: 1 };
+                    processRecurringExpenses();
+                };
+
+                const deleteRecurringExpense = (id) => {
+                    if (confirm('Vai tiešām vēlaties dzēst šo periodisko tēriņu?')) {
+                        recurringExpenses.value = recurringExpenses.value.filter(r => r.id !== id);
+                        save();
+                    }
+                };
+
+                const processRecurringExpenses = () => {
+                    const now = new Date();
+                    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                    const today = now.getDate();
+                    let added = false;
+
+                    recurringExpenses.value.forEach(rec => {
+                        if (rec.lastProcessedMonth !== currentMonth && today >= rec.dayOfMonth) {
+                            const newExpense = {
+                                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                amount: rec.amount,
+                                categoryId: rec.categoryId,
+                                subCategoryId: rec.subCategoryId,
+                                note: `[Periodisks] ${rec.note}`,
+                                date: now.toISOString()
+                            };
+                            expenses.value.push(newExpense);
+                            rec.lastProcessedMonth = currentMonth;
+                            added = true;
+                        }
+                    });
+
+                    if (added) {
+                        save();
+                    }
                 };
 
                 const handleFirestoreError = (error, operationType, path) => {
@@ -773,6 +919,7 @@
                     localStorage.setItem('expenses', JSON.stringify(expenses.value));
                     localStorage.setItem('savings', JSON.stringify(savings.value));
                     localStorage.setItem('categories', JSON.stringify(categories.value));
+                    localStorage.setItem('recurringExpenses', JSON.stringify(recurringExpenses.value));
                 };
 
                 const saveApiKey = () => localStorage.setItem('gemini_api_key', apiKey.value);
@@ -908,6 +1055,7 @@
                 };
 
                 onMounted(() => {
+                    processRecurringExpenses();
                     onAuthStateChanged(auth, (firebaseUser) => {
                         if (firebaseUser) {
                             user.value = firebaseUser;
@@ -955,11 +1103,11 @@
                 });
 
                 return {
-                    activeTab, activeTabName, expenses, savings, categories, entry, saving, apiKey, user, syncStatus,
+                    activeTab, activeTabName, expenses, savings, categories, recurringExpenses, entry, recurringEntry, saving, apiKey, user, syncStatus,
                     showAddCategory, newCategoryName, editingCategoryId, editingCategoryName,
                     addingSubToId, newSubName, editingSubId, editingSubName, updateAvailable, statsRange,
                     selectedCategorySubs, totalMonthly, totalSavings, recentExpenses,
-                    selectCategory, addExpense, deleteExpense, addSaving, deleteSaving, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
+                    selectCategory, addExpense, deleteExpense, addSaving, deleteSaving, addRecurringExpense, deleteRecurringExpense, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
                     checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus, pushToCloud, pullFromCloud, lastSynced,

@@ -32,6 +32,17 @@ service cloud.firestore {
     //   - subCategories: list (of objects with id, name)
     //   - uid: string (matches userId)
     //
+    // Collection: /users/{userId}/recurringExpenses/{recurringId}
+    // Fields:
+    //   - id: string
+    //   - amount: number
+    //   - categoryId: string
+    //   - subCategoryId: string
+    //   - note: string
+    //   - dayOfMonth: number
+    //   - lastProcessedMonth: string
+    //   - uid: string (matches userId)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -70,6 +81,13 @@ service cloud.firestore {
              data.uid == request.auth.uid;
     }
 
+    function isValidRecurring(data) {
+      return data.amount is number && data.amount >= 0 &&
+             data.categoryId is string &&
+             data.dayOfMonth is number && data.dayOfMonth >= 1 && data.dayOfMonth <= 31 &&
+             data.uid == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -95,6 +113,13 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && isValidCategory(request.resource.data);
         allow update: if isOwner(userId) && isValidCategory(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /recurringExpenses/{recurringId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidRecurring(request.resource.data);
+        allow update: if isOwner(userId) && isValidRecurring(request.resource.data);
         allow delete: if isOwner(userId);
       }
     }
