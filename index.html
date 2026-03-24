@@ -153,6 +153,17 @@
                         <canvas id="categoryChart"></canvas>
                     </div>
                 </div>
+
+                <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
+                    <h3 class="text-lg font-bold mb-6">Tēriņu tendence</h3>
+                    <div class="h-64 relative">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SAVINGS TAB -->
+            <div v-if="activeTab === 'savings'" class="space-y-6">
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
                     <h3 class="text-lg font-bold mb-4">Ietaupījumu progress</h3>
                     <div class="flex items-center gap-4">
@@ -163,10 +174,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- SAVINGS TAB -->
-            <div v-if="activeTab === 'savings'" class="space-y-6">
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
                     <h3 class="text-lg font-bold mb-2">Pievienot ietaupījumu</h3>
                     <p class="text-xs text-neutral-500 mb-6">Piemēram: "Kafija termosā lidzi (-3€)"</p>
@@ -198,7 +205,7 @@
             <!-- RECURRING TAB -->
             <div v-if="activeTab === 'recurring'" class="space-y-6">
                 <div class="bg-neutral-900 p-6 rounded-3xl border border-neutral-800 shadow-xl">
-                    <h3 class="text-lg font-bold mb-2 text-blue-400">Pievienot periodisko tēriņu</h3>
+                    <h3 class="text-lg font-bold mb-2 text-blue-400">{{ editingRecurringId ? 'Rediģēt periodisko tēriņu' : 'Pievienot periodisko tēriņu' }}</h3>
                     <p class="text-xs text-neutral-500 mb-6">Tēriņi, kas atkārtojas katru mēnesi (piem. īre, Netflix).</p>
                     
                     <div class="space-y-4">
@@ -244,10 +251,17 @@
                                 class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500">
                         </div>
 
-                        <button @click="addRecurringExpense" :disabled="!recurringEntry.amount || !recurringEntry.categoryId"
-                            class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-4 rounded-2xl shadow-lg transition-all">
-                            Saglabāt periodisko
-                        </button>
+                        <div class="flex gap-3">
+                            <button v-if="editingRecurringId" @click="cancelEditRecurring"
+                                class="flex-1 bg-neutral-800 text-neutral-400 font-bold py-4 rounded-2xl border border-neutral-700 transition-all">
+                                Atcelt
+                            </button>
+                            <button @click="addRecurringExpense" :disabled="!recurringEntry.amount || !recurringEntry.categoryId"
+                                :class="['font-bold py-4 rounded-2xl shadow-lg transition-all', 
+                                         editingRecurringId ? 'flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white' : 'w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white']">
+                                {{ editingRecurringId ? 'Saglabāt izmaiņas' : 'Saglabāt periodisko' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -262,9 +276,12 @@
                             <p class="text-xs text-neutral-300 mt-0.5">{{ rec.note }}</p>
                             <p class="text-[10px] text-neutral-500 mt-1">Katru mēnesi, {{ rec.dayOfMonth }}. datumā</p>
                         </div>
-                        <div class="flex items-center gap-4">
-                            <span class="font-mono font-bold text-blue-400">€{{ rec.amount.toFixed(2) }}</span>
-                            <button @click="deleteRecurringExpense(rec.id)" class="text-neutral-700 hover:text-red-500 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono font-bold text-blue-400 mr-2">€{{ rec.amount.toFixed(2) }}</span>
+                            <button @click="startEditRecurring(rec)" class="text-neutral-700 hover:text-blue-500 transition-colors p-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </button>
+                            <button @click="deleteRecurringExpense(rec.id)" class="text-neutral-700 hover:text-red-500 transition-colors p-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                         </div>
@@ -526,6 +543,7 @@
                 const checkingForUpdates = ref(false);
                 const updateStatus = ref('');
                 const statsRange = ref('all');
+                const editingRecurringId = ref(null);
                 const expandedCategoryId = ref(null);
                 let registration = null;
 
@@ -533,7 +551,8 @@
                     expandedCategoryId.value = expandedCategoryId.value === id ? null : id;
                 };
 
-                let chart = null;
+                let categoryChart = null;
+                let trendChart = null;
 
                 const activeTabName = computed(() => {
                     const names = { entry: 'Jauns ieraksts', history: 'Vēsture', stats: 'Statistika', savings: 'Ietaupījumi', recurring: 'Periodiskie', settings: 'Iestatījumi' };
@@ -734,22 +753,54 @@
                 const addRecurringExpense = () => {
                     if (!recurringEntry.value.amount || !recurringEntry.value.categoryId) return;
                     
-                    const newRec = {
-                        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        amount: parseFloat(recurringEntry.value.amount),
-                        categoryId: recurringEntry.value.categoryId,
-                        subCategoryId: recurringEntry.value.subCategoryId,
-                        note: recurringEntry.value.note,
-                        dayOfMonth: parseInt(recurringEntry.value.dayOfMonth) || 1,
-                        lastProcessedMonth: ''
-                    };
+                    if (editingRecurringId.value) {
+                        const index = recurringExpenses.value.findIndex(r => r.id === editingRecurringId.value);
+                        if (index !== -1) {
+                            recurringExpenses.value[index] = {
+                                ...recurringExpenses.value[index],
+                                amount: parseFloat(recurringEntry.value.amount),
+                                categoryId: recurringEntry.value.categoryId,
+                                subCategoryId: recurringEntry.value.subCategoryId,
+                                note: recurringEntry.value.note,
+                                dayOfMonth: parseInt(recurringEntry.value.dayOfMonth) || 1
+                            };
+                        }
+                        editingRecurringId.value = null;
+                    } else {
+                        const newRec = {
+                            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            amount: parseFloat(recurringEntry.value.amount),
+                            categoryId: recurringEntry.value.categoryId,
+                            subCategoryId: recurringEntry.value.subCategoryId,
+                            note: recurringEntry.value.note,
+                            dayOfMonth: parseInt(recurringEntry.value.dayOfMonth) || 1,
+                            lastProcessedMonth: ''
+                        };
+                        recurringExpenses.value.push(newRec);
+                    }
                     
-                    recurringExpenses.value.push(newRec);
                     save();
                     
                     // Reset entry
                     recurringEntry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '', dayOfMonth: 1 };
                     processRecurringExpenses();
+                };
+
+                const startEditRecurring = (rec) => {
+                    editingRecurringId.value = rec.id;
+                    recurringEntry.value = { 
+                        amount: rec.amount, 
+                        categoryId: rec.categoryId, 
+                        subCategoryId: rec.subCategoryId, 
+                        note: rec.note, 
+                        dayOfMonth: rec.dayOfMonth 
+                    };
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const cancelEditRecurring = () => {
+                    editingRecurringId.value = null;
+                    recurringEntry.value = { amount: '', categoryId: null, subCategoryId: 'uncategorized', note: '', dayOfMonth: 1 };
                 };
 
                 const deleteRecurringExpense = (id) => {
@@ -772,7 +823,7 @@
                                 amount: rec.amount,
                                 categoryId: rec.categoryId,
                                 subCategoryId: rec.subCategoryId,
-                                note: `[Periodisks] ${rec.note}`,
+                                note: rec.note,
                                 date: now.toISOString()
                             };
                             expenses.value.push(newExpense);
@@ -935,8 +986,9 @@
 
                 const updateChart = () => {
                     if (activeTab.value !== 'stats') return;
-                    const ctx = document.getElementById('categoryChart');
-                    if (!ctx) return;
+                    const catCtx = document.getElementById('categoryChart');
+                    const trendCtx = document.getElementById('trendChart');
+                    if (!catCtx || !trendCtx) return;
 
                     const now = new Date();
                     let filteredExpenses = expenses.value;
@@ -957,14 +1009,15 @@
                         filteredExpenses = expenses.value.filter(e => new Date(e.date) >= twentyDaysAgo);
                     }
 
+                    // Category Chart
                     const dataMap = {};
                     filteredExpenses.forEach(e => {
                         const name = getCategoryName(e.categoryId);
                         dataMap[name] = (dataMap[name] || 0) + e.amount;
                     });
 
-                    if (chart) chart.destroy();
-                    chart = new Chart(ctx, {
+                    if (categoryChart) categoryChart.destroy();
+                    categoryChart = new Chart(catCtx, {
                         type: 'doughnut',
                         data: {
                             labels: Object.keys(dataMap),
@@ -977,7 +1030,106 @@
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { position: 'bottom', labels: { color: '#a3a3a3', font: { size: 10 } } } }
+                            plugins: { 
+                                legend: { position: 'bottom', labels: { color: '#a3a3a3', font: { size: 10 }, padding: 20 } } 
+                            },
+                            cutout: '70%'
+                        }
+                    });
+
+                    // Trend Chart
+                    const trendDataMap = {};
+                    if (statsRange.value === 'all') {
+                        filteredExpenses.forEach(e => {
+                            const d = new Date(e.date);
+                            const key = d.toLocaleDateString('lv-LV', { month: 'short', year: '2-digit' });
+                            trendDataMap[key] = (trendDataMap[key] || 0) + e.amount;
+                        });
+                    } else {
+                        filteredExpenses.forEach(e => {
+                            const key = new Date(e.date).toLocaleDateString('lv-LV', { day: '2-digit', month: '2-digit' });
+                            trendDataMap[key] = (trendDataMap[key] || 0) + e.amount;
+                        });
+                    }
+
+                    const sortedLabels = Object.keys(trendDataMap).sort((a, b) => {
+                        if (statsRange.value === 'all') {
+                            // Simple sort for month/year might be tricky, but let's assume chronological order in expenses
+                            return 0; // Better to sort by actual date
+                        }
+                        const [dA, mA] = a.split('.').map(Number);
+                        const [dB, mB] = b.split('.').map(Number);
+                        return mA !== mB ? mA - mB : dA - dB;
+                    });
+
+                    // Re-calculate sorted labels more reliably
+                    const trendPoints = [];
+                    Object.keys(trendDataMap).forEach(key => {
+                        // Find first expense with this key to get a date object for sorting
+                        const sampleExp = filteredExpenses.find(e => {
+                            if (statsRange.value === 'all') {
+                                return new Date(e.date).toLocaleDateString('lv-LV', { month: 'short', year: '2-digit' }) === key;
+                            }
+                            return new Date(e.date).toLocaleDateString('lv-LV', { day: '2-digit', month: '2-digit' }) === key;
+                        });
+                        if (sampleExp) {
+                            trendPoints.push({ key, date: new Date(sampleExp.date), amount: trendDataMap[key] });
+                        }
+                    });
+                    trendPoints.sort((a, b) => a.date - b.date);
+
+                    if (trendChart) trendChart.destroy();
+                    trendChart = new Chart(trendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: trendPoints.map(p => p.key),
+                            datasets: [{
+                                label: 'Tēriņi (€)',
+                                data: trendPoints.map(p => p.amount),
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#3b82f6',
+                                pointBorderColor: '#171717',
+                                pointBorderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { 
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#171717',
+                                    titleColor: '#fff',
+                                    bodyColor: '#fff',
+                                    borderColor: '#262626',
+                                    borderWidth: 1,
+                                    padding: 10,
+                                    displayColors: false,
+                                    callbacks: {
+                                        label: (context) => `€ ${context.parsed.y.toFixed(2)}`
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { 
+                                    grid: { display: false }, 
+                                    ticks: { color: '#737373', font: { size: 10 } } 
+                                },
+                                y: { 
+                                    grid: { color: '#262626' }, 
+                                    ticks: { 
+                                        color: '#737373', 
+                                        font: { size: 10 },
+                                        callback: (value) => `€${value}`
+                                    }, 
+                                    beginAtZero: true 
+                                }
+                            }
                         }
                     });
                 };
@@ -1107,11 +1259,11 @@
                     showAddCategory, newCategoryName, editingCategoryId, editingCategoryName,
                     addingSubToId, newSubName, editingSubId, editingSubName, updateAvailable, statsRange,
                     selectedCategorySubs, totalMonthly, totalSavings, recentExpenses,
-                    selectCategory, addExpense, deleteExpense, addSaving, deleteSaving, addRecurringExpense, deleteRecurringExpense, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
+                    selectCategory, addExpense, deleteExpense, addSaving, deleteSaving, addRecurringExpense, deleteRecurringExpense, startEditRecurring, cancelEditRecurring, saveApiKey, getCategoryName, getSubCategoryName, formatDate, exportData,
                     addCategory, startEditCategory, updateCategory, deleteCategory,
                     addSubCategory, startEditSub, updateSubCategory, deleteSubCategory,
                     checkForUpdates, applyUpdate, login, logout, importData, checkingForUpdates, updateStatus, pushToCloud, pullFromCloud, lastSynced,
-                    expandedCategoryId, toggleCategory, categorizeWithAi, isAiCategorizing, aiError, loginError, appVersion, buildId
+                    expandedCategoryId, toggleCategory, categorizeWithAi, isAiCategorizing, aiError, loginError, appVersion, buildId, editingRecurringId
                 };
             }
         }).mount('#app');
