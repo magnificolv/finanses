@@ -95,33 +95,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
-
-      match /expenses/{expenseId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && isValidExpense(request.resource.data);
-        allow update: if isOwner(userId) && isValidExpense(request.resource.data);
-        allow delete: if isOwner(userId);
-      }
-
-      match /savings/{savingId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && isValidSaving(request.resource.data);
-        allow update: if isOwner(userId) && isValidSaving(request.resource.data);
-        allow delete: if isOwner(userId);
-      }
-
-      match /categories/{categoryId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && isValidCategory(request.resource.data);
-        allow update: if isOwner(userId) && isValidCategory(request.resource.data);
-        allow delete: if isOwner(userId);
-      }
-
-      match /recurringExpenses/{recurringId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && isValidRecurring(request.resource.data);
-        allow update: if isOwner(userId) && isValidRecurring(request.resource.data);
-        allow delete: if isOwner(userId);
+      
+      match /{allPaths=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
