@@ -1,5 +1,5 @@
-const CACHE_NAME = 'budget-v7';
-const VERSION = '2.1.0';
+const CACHE_NAME = 'budget-v24';
+const VERSION = '2.4.0';
 const ASSETS = [
   'index.html',
   'manifest.json'

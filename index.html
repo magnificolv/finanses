@@ -19,10 +19,7 @@
     </style>
 </head>
 <body class="bg-neutral-950 text-neutral-100 min-h-screen">
-    <div id="app" v-cloak></div>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <script>
+    <div id="app" v-cloak>
         <header class="p-6 border-b border-neutral-900 flex justify-between items-center sticky top-0 bg-neutral-950/80 backdrop-blur-md z-40">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 rotate-3 hover:rotate-0 transition-transform duration-300">
@@ -410,8 +407,8 @@
                 const user = ref(null);
                 const syncStatus = ref('offline'); // offline, syncing, synced, error
                 const lastSynced = ref(null);
-                const appVersion = ref('2.3.0');
-                const buildId = ref('2026.03.24.0116');
+                const appVersion = ref('2.4.0');
+                const buildId = ref('2026.03.24.0401');
                 const loginError = ref('');
                 const isAiCategorizing = ref(false);
                 const aiError = ref('');
