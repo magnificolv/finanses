@@ -349,7 +349,7 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js'
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js'
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, getDocFromServer, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'
-        import { GoogleGenAI } from "@google/genai"
+        import { GoogleGenAI } from "https://esm.run/@google/genai"
         
         const firebaseConfig = {
           projectId: "gen-lang-client-0124777388",
@@ -461,15 +461,14 @@
 
                     try {
                         const ai = new GoogleGenAI({ apiKey: apiKey.value });
-                        const model = ai.models.generateContent({
-                            model: "gemini-1.5-flash",
+                        const response = await ai.models.generateContent({
+                            model: "gemini-3-flash-preview",
                             contents: `Analizē šo pirkuma piezīmi: "${entry.value.note}". 
                             Izvēlies piemērotāko kategoriju un apakškategoriju no šī saraksta: ${JSON.stringify(categories.value)}.
                             Atbildi TIKAI JSON formātā: {"categoryId": "id", "subCategoryId": "id"}. 
                             Ja apakškategorija neeksistē, lieto "uncategorized". Ja neesi pārliecināts, mini ticamāko.`
                         });
 
-                        const response = await model;
                         const text = response.text;
                         const result = JSON.parse(text.replace(/```json|```/g, '').trim());
 
